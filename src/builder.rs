@@ -7,12 +7,20 @@ struct UnCompiledNode {
     last_out: u64,
 }
 
+impl UnCompiledNode {}
+
 struct Transition {
     out: u64,
     _in: u8,
 }
 
 impl Builder {
+    fn new() -> Builder {
+        let stack: Vec<UnCompiledNode> = Vec::with_capacity(64);
+        stack.push();
+        Self { stack: stack }
+    }
+
     fn add(&self, key: &[u8], val: u64) {}
 
     fn find_common_prefix(&self, key: &[u8]) -> u32 {
@@ -25,7 +33,12 @@ impl Builder {
         i as u32
     }
 
-    fn add_suffix() {}
+    fn add_suffix(&self, key: &[u8]) {
+        if key.len() == 0 {
+            return;
+        }
+        last = self.stack.len() - 1;
+    }
 
     fn pop_freeze() {}
 
