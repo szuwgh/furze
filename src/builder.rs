@@ -1,5 +1,75 @@
-struct Builder {
+struct UnCompiledNodes {
     stack: Vec<UnCompiledNode>,
+}
+
+impl UnCompiledNodes {
+    fn new() -> UnCompiledNodes {
+        let stack: Vec<UnCompiledNode> = Vec::with_capacity(64);
+        Self { stack: stack }
+    }
+
+    fn print(&self) {
+        for v in self.stack.iter() {
+            println!("in:{}, out:{}", v.last_in as char, v.last_out);
+        }
+    }
+
+    fn find_common_prefix(&mut self, key: &[u8], mut out: u64) -> (usize, u64) {
+        let mut i: usize = 0;
+        while i < key.len() {
+            if self.stack[i].last_in == key[i] {
+                let common_pre = Self::output_prefix(self.stack[i].last_out, out);
+                out = Self::output_sub(out, common_pre);
+                self.stack[i].last_out = out;
+                i += 1;
+            } else {
+                break;
+            }
+        }
+        (i, out)
+    }
+
+    fn push_empty(&mut self) {
+        self.stack.push(UnCompiledNode::new());
+    }
+
+    fn pop_empty(&mut self) {
+        self.stack.pop();
+    }
+
+    fn pop_freeze(&mut self) -> Option<UnCompiledNode> {
+        self.stack.pop()
+    }
+
+    fn add_suffix(&mut self, key: &[u8], out: u64) {
+        if key.len() == 0 {
+            return;
+        }
+        let last = self.stack.len() - 1;
+        self.stack[last].last_in = key[0];
+        self.stack[last].last_out = out;
+        for v in &key[1..] {
+            let mut next = UnCompiledNode::new();
+            next.last_in = *v;
+            self.stack.push(next);
+        }
+        self.push_empty();
+    }
+
+    fn output_prefix(l: u64, r: u64) -> u64 {
+        if l < r {
+            return l;
+        }
+        r
+    }
+
+    fn output_sub(l: u64, r: u64) -> u64 {
+        l - r
+    }
+
+    fn output_cat(l: u64, r: u64) -> u64 {
+        l + r
+    }
 }
 
 struct UnCompiledNode {
@@ -7,48 +77,58 @@ struct UnCompiledNode {
     last_out: u64,
 }
 
-impl UnCompiledNode {}
+impl UnCompiledNode {
+    fn new() -> UnCompiledNode {
+        Self {
+            last_in: 0,
+            last_out: 0,
+        }
+    }
+}
+
+struct BuilderNode {}
 
 struct Transition {
     out: u64,
     _in: u8,
 }
 
+struct Builder {
+    unfinished: UnCompiledNodes,
+}
+
 impl Builder {
     fn new() -> Builder {
-        let stack: Vec<UnCompiledNode> = Vec::with_capacity(64);
-        stack.push();
-        Self { stack: stack }
+        let mut unfinished = UnCompiledNodes::new();
+        unfinished.push_empty();
+        Self {
+            unfinished: unfinished,
+        }
     }
 
-    fn add(&self, key: &[u8], val: u64) {}
+    fn print(&self) {
+        self.unfinished.print();
+    }
 
-    fn find_common_prefix(&self, key: &[u8]) -> u32 {
-        let mut i: usize = 0;
-        while i < key.len() {
-            if self.stack[i].last_in == key[i] {
-                i += 1;
+    fn add(&mut self, key: &[u8], val: u64) {
+        let (prefix_len, out) = self.unfinished.find_common_prefix(key, val);
+        self.freeze_tail(prefix_len);
+        self.unfinished.add_suffix(&key[prefix_len..], out)
+    }
+
+    fn freeze_tail(&mut self, prefix_len: usize) {
+        self.unfinished.pop_empty();
+        while prefix_len < self.unfinished.stack.len() {
+            if let Some(unfinish_node) = self.unfinished.pop_freeze() {
+                self.compile_node(unfinish_node);
+            } else {
+                break;
             }
         }
-        i as u32
+        self.unfinished.push_empty();
     }
 
-    fn add_suffix(&self, key: &[u8]) {
-        if key.len() == 0 {
-            return;
-        }
-        last = self.stack.len() - 1;
-    }
-
-    fn pop_freeze() {}
-
-    fn freeze_tail(prefix_len: u32) {}
-
-    fn compile_node() {}
-
-    fn output_prefix() -> u64 {
-        0
-    }
+    fn compile_node(&self, node: UnCompiledNode) {}
 }
 
 #[cfg(test)]
@@ -56,5 +136,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_add() {}
+    fn test_add() {
+        let mut b = Builder::new();
+        b.add("mon".as_bytes(), 2);
+        b.add("thurs".as_bytes(), 5);
+        b.add("tues".as_bytes(), 3);
+        b.print()
+    }
 }
