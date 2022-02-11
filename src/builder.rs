@@ -20,6 +20,9 @@ impl UnCompiledNodes {
 
     fn find_common_prefix(&mut self, key: &[u8], mut out: u64) -> (usize, u64) {
         let mut i: usize = 0;
+        // if self.stack.len() == 0 {
+        //     return (0, 0);
+        // }
         while i < key.len() {
             if self.stack[i].last_in() == key[i] {
                 let common_pre = Self::output_prefix(self.stack[i].last_out(), out);
@@ -45,6 +48,8 @@ impl UnCompiledNodes {
         self.stack.pop()
     }
 
+    fn add_prefix(&mut self, key: &[u8]) {}
+
     fn add_suffix(&mut self, key: &[u8], out: u64) {
         if key.len() == 0 {
             return;
@@ -58,7 +63,7 @@ impl UnCompiledNodes {
             // next.last_in = *v;
             self.stack.push(next);
         }
-        self.push_empty();
+        // self.push_empty();
     }
 
     fn output_prefix(l: u64, r: u64) -> u64 {
@@ -172,7 +177,7 @@ impl<W: Write> Builder<W> {
 
     fn add(&mut self, key: &[u8], val: u64) {
         let (prefix_len, out) = self.unfinished.find_common_prefix(key, val);
-        // self.freeze_tail(prefix_len);
+        self.freeze_tail(prefix_len);
         // for i in 0..prefix_len {
         //     self.unfinished.stack[i].add_arc();
         // }
@@ -180,15 +185,15 @@ impl<W: Write> Builder<W> {
     }
 
     fn freeze_tail(&mut self, prefix_len: usize) {
-        self.unfinished.pop_empty();
-        while prefix_len < self.unfinished.stack.len() {
+        //self.unfinished.pop_empty();
+        while prefix_len + 1 < self.unfinished.stack.len() {
             if let Some(unfinish_node) = self.unfinished.pop_freeze() {
                 self.compile_node(unfinish_node);
             } else {
                 break;
             }
         }
-        self.unfinished.push_empty();
+        // self.unfinished.push_empty();
     }
 
     fn compile_node(&self, node: UnCompiledNode) {
