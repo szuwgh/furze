@@ -104,7 +104,7 @@ impl UnCompiledNode {
     }
 
     fn last_compiled(&mut self, addr: u32) {
-        assert_ne!(self.num_arc, 0);
+        // assert_ne!(self.num_arc, 0);
         let arc = &mut self.arcs[self.num_arc - 1];
         arc.target = addr;
     }
@@ -187,18 +187,23 @@ impl<W: Write> Builder<W> {
         self.unfinished.add_suffix(&key[prefix_len..], out);
         Ok(())
     }
-
+    //c a t
+    //d e e p
     fn freeze_tail(&mut self, prefix_len: usize) -> Result<()> {
         let mut addr: u32 = 0;
         while prefix_len + 1 < self.unfinished.stack.len() {
-            if let Some(mut unfinish_node) = self.unfinished.pop_freeze() {
-                unfinish_node.last_compiled(addr);
-                addr = self.compile_node(unfinish_node)?;
+            if addr == 0 {
+                self.unfinished.pop_empty();
+                addr = 1;
             } else {
-                break;
+                if let Some(mut unfinish_node) = self.unfinished.pop_freeze() {
+                    unfinish_node.last_compiled(addr);
+                    addr = self.compile_node(unfinish_node)?;
+                } else {
+                    break;
+                }
             }
         }
-        self.unfinished.push_empty();
         Ok(())
     }
 
@@ -206,7 +211,7 @@ impl<W: Write> Builder<W> {
         // for a in node.arcs.iter() {
         //     // self.encoder.write_byte(b: u8)
         // }
-        Ok(0)
+        Ok(1)
     }
 }
 
@@ -218,7 +223,7 @@ mod tests {
     fn test_add() {
         let mut b = Builder::new(vec![]);
         b.add("cat".as_bytes(), 5);
-        b.add("deep".as_bytes(), 10);
+        b.add("deep".as_bytes(), 5);
         b.add("do".as_bytes(), 15);
         b.add("dog".as_bytes(), 2);
         b.print()
