@@ -1,5 +1,7 @@
 use crate::encoder::Encoder;
+use anyhow::Result;
 use std::io::Write;
+
 struct UnCompiledNodes {
     stack: Vec<UnCompiledNode>,
 }
@@ -14,7 +16,6 @@ impl UnCompiledNodes {
         for v in self.stack.iter() {
             println!("");
             v.print();
-            // println!("last_in:{}, last_out:{}", v.last_in as char, v.last_out);
         }
     }
 
@@ -24,6 +25,9 @@ impl UnCompiledNodes {
         //     return (0, 0);
         // }
         while i < key.len() {
+            if i >= self.stack.len() {
+                break;
+            }
             if self.stack[i].last_in() == key[i] {
                 let common_pre = Self::output_prefix(self.stack[i].last_out(), out);
                 out = Self::output_sub(out, common_pre);
@@ -56,14 +60,12 @@ impl UnCompiledNodes {
         }
         let last = self.stack.len() - 1;
         self.stack[last].push_arc(Arc::new(key[0], out));
-        //self.stack[last].last_out = out;
         for v in &key[1..] {
             let mut next = UnCompiledNode::new();
             next.push_arc(Arc::new(*v, 0));
-            // next.last_in = *v;
             self.stack.push(next);
         }
-        // self.push_empty();
+        self.push_empty();
     }
 
     fn output_prefix(l: u64, r: u64) -> u64 {
@@ -82,18 +84,14 @@ impl UnCompiledNodes {
     }
 }
 
-struct UnCompiledNode {
-    // last_in: u8,
-    // last_out: u64,
-    num_arc: usize, //边的数量
-    arcs: Vec<Arc>,
+pub struct UnCompiledNode {
+    pub num_arc: usize, //边的数量
+    pub arcs: Vec<Arc>,
 }
 
 impl UnCompiledNode {
     fn new() -> UnCompiledNode {
         Self {
-            //  last_in: 0,
-            //   last_out: 0,
             num_arc: 0,
             arcs: Vec::new(),
         }
@@ -103,6 +101,12 @@ impl UnCompiledNode {
         for v in self.arcs.iter() {
             print!("arc: in: {}, out:{} ", v._in as char, v.out);
         }
+    }
+
+    fn last_compiled(&mut self, addr: u32) {
+        assert_ne!(self.num_arc, 0);
+        let arc = &mut self.arcs[self.num_arc - 1];
+        arc.target = addr;
     }
 
     fn push_arc(&mut self, arc: Arc) {
@@ -140,10 +144,11 @@ impl UnCompiledNode {
 
 struct BuilderNode {}
 
-struct Arc {
-    _in: u8,
-    out: u64,
+pub struct Arc {
+    pub _in: u8,
+    pub out: u64,
     is_final: bool,
+    pub target: u32,
 }
 
 impl Arc {
@@ -152,6 +157,7 @@ impl Arc {
             _in: _in,
             out: out,
             is_final: false,
+            target: 0,
         }
     }
 }
@@ -175,29 +181,32 @@ impl<W: Write> Builder<W> {
         self.unfinished.print();
     }
 
-    fn add(&mut self, key: &[u8], val: u64) {
+    fn add(&mut self, key: &[u8], val: u64) -> Result<()> {
         let (prefix_len, out) = self.unfinished.find_common_prefix(key, val);
-        self.freeze_tail(prefix_len);
-        // for i in 0..prefix_len {
-        //     self.unfinished.stack[i].add_arc();
-        // }
-        self.unfinished.add_suffix(&key[prefix_len..], out)
+        self.freeze_tail(prefix_len)?;
+        self.unfinished.add_suffix(&key[prefix_len..], out);
+        Ok(())
     }
 
-    fn freeze_tail(&mut self, prefix_len: usize) {
-        //self.unfinished.pop_empty();
+    fn freeze_tail(&mut self, prefix_len: usize) -> Result<()> {
+        let mut addr: u32 = 0;
         while prefix_len + 1 < self.unfinished.stack.len() {
-            if let Some(unfinish_node) = self.unfinished.pop_freeze() {
-                self.compile_node(unfinish_node);
+            if let Some(mut unfinish_node) = self.unfinished.pop_freeze() {
+                unfinish_node.last_compiled(addr);
+                addr = self.compile_node(unfinish_node)?;
             } else {
                 break;
             }
         }
-        // self.unfinished.push_empty();
+        self.unfinished.push_empty();
+        Ok(())
     }
 
-    fn compile_node(&self, node: UnCompiledNode) {
-        for a in node.arcs.iter() {}
+    fn compile_node(&mut self, node: UnCompiledNode) -> Result<u32> {
+        // for a in node.arcs.iter() {
+        //     // self.encoder.write_byte(b: u8)
+        // }
+        Ok(0)
     }
 }
 
@@ -208,9 +217,10 @@ mod tests {
     #[test]
     fn test_add() {
         let mut b = Builder::new(vec![]);
-        b.add("cat".as_bytes(), 2);
-        b.add("deep".as_bytes(), 5);
-        b.add("do".as_bytes(), 3);
+        b.add("cat".as_bytes(), 5);
+        b.add("deep".as_bytes(), 10);
+        b.add("do".as_bytes(), 15);
+        b.add("dog".as_bytes(), 2);
         b.print()
     }
 }
