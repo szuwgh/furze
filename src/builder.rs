@@ -104,7 +104,6 @@ impl UnCompiledNode {
     }
 
     fn last_compiled(&mut self, addr: u32) {
-        // assert_ne!(self.num_arc, 0);
         let arc = &mut self.arcs[self.num_arc - 1];
         arc.target = addr;
     }
@@ -137,8 +136,9 @@ impl UnCompiledNode {
             self.push_arc(Arc::new(_in, out));
             return;
         }
-        self.arcs[self.num_arc - 1]._in = _in;
-        self.arcs[self.num_arc - 1].out = out;
+        let arc = &mut self.arcs[self.num_arc - 1];
+        arc._in = _in;
+        arc.out = out;
     }
 }
 
@@ -226,6 +226,7 @@ mod tests {
         b.add("deep".as_bytes(), 5);
         b.add("do".as_bytes(), 15);
         b.add("dog".as_bytes(), 2);
+        b.add("dogg".as_bytes(), 2);
         b.print()
     }
 }
