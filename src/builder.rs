@@ -21,15 +21,13 @@ impl UnCompiledNodes {
 
     fn find_common_prefix(&mut self, key: &[u8], mut out: i64) -> (usize, i64) {
         let mut i: usize = 0;
-        // if self.stack.len() == 0 {
-        //     return (0, 0);
-        // }
         while i < key.len() {
             if i >= self.stack.len() {
                 break;
             }
             if self.stack[i].last_in() == key[i] {
                 let common_pre = Self::output_prefix(self.stack[i].last_out(), out);
+                let add_prefix = Self::output_sub(self.stack[i].last_out(), common_pre);
                 out = Self::output_sub(out, common_pre);
                 self.stack[i].set_last_out(common_pre);
                 i += 1;
@@ -40,8 +38,10 @@ impl UnCompiledNodes {
         (i, out)
     }
 
-    fn push_empty(&mut self) {
-        self.stack.push(UnCompiledNode::new());
+    fn add_output_prefix() {}
+
+    fn push_empty(&mut self, _final: bool) {
+        self.stack.push(UnCompiledNode::new(_final));
     }
 
     fn pop_empty(&mut self) {
@@ -61,11 +61,11 @@ impl UnCompiledNodes {
         let last = self.stack.len() - 1;
         self.stack[last].push_arc(Arc::new(key[0], out));
         for v in &key[1..] {
-            let mut next = UnCompiledNode::new();
+            let mut next = UnCompiledNode::new(false);
             next.push_arc(Arc::new(*v, 0));
             self.stack.push(next);
         }
-        self.push_empty();
+        self.push_empty(true);
     }
 
     fn output_prefix(l: i64, r: i64) -> i64 {
@@ -87,13 +87,15 @@ impl UnCompiledNodes {
 pub struct UnCompiledNode {
     pub num_arc: usize, //边的数量
     pub arcs: Vec<Arc>,
+    is_final: bool,
 }
 
 impl UnCompiledNode {
-    fn new() -> UnCompiledNode {
+    fn new(_final: bool) -> UnCompiledNode {
         Self {
             num_arc: 0,
             arcs: Vec::new(),
+            is_final: _final,
         }
     }
 
@@ -147,7 +149,7 @@ struct BuilderNode {}
 pub struct Arc {
     pub _in: u8,
     pub out: i64,
-    is_final: bool,
+    pub is_final: bool,
     pub target: u32,
 }
 
@@ -170,7 +172,7 @@ struct Builder<W: Write> {
 impl<W: Write> Builder<W> {
     fn new(w: W) -> Builder<W> {
         let mut unfinished = UnCompiledNodes::new();
-        unfinished.push_empty();
+        unfinished.push_empty(false);
         Self {
             unfinished: unfinished,
             encoder: Encoder::new(w),
@@ -187,6 +189,7 @@ impl<W: Write> Builder<W> {
         self.unfinished.add_suffix(&key[prefix_len..], out);
         Ok(())
     }
+
     //c a t
     //d e e p
     fn freeze_tail(&mut self, prefix_len: usize) -> Result<()> {
@@ -225,7 +228,7 @@ mod tests {
         b.add("cat".as_bytes(), 5);
         b.add("deep".as_bytes(), 10);
         b.add("do".as_bytes(), 15);
-        //b.add("dog".as_bytes(), 2);
+        b.add("dog".as_bytes(), 2);
         b.print()
     }
 }
