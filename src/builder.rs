@@ -19,26 +19,29 @@ impl UnCompiledNodes {
         }
     }
 
-    fn find_common_prefix(&mut self, key: &[u8], mut out: i64) -> (usize, i64) {
+    fn find_common_prefix(&mut self, key: &[u8], mut out: u64) -> (usize, u64) {
         let mut i: usize = 0;
         while i < key.len() {
             if i >= self.stack.len() {
                 break;
             }
+            let mut add_prefix: u64 = 0;
             if self.stack[i].last_in() == key[i] {
                 let common_pre = Self::output_prefix(self.stack[i].last_out(), out);
-                let add_prefix = Self::output_sub(self.stack[i].last_out(), common_pre);
+                add_prefix = Self::output_sub(self.stack[i].last_out(), common_pre);
                 out = Self::output_sub(out, common_pre);
                 self.stack[i].set_last_out(common_pre);
                 i += 1;
             } else {
                 break;
             }
+            if add_prefix > 0 {
+                println!("add_prefix:{}", add_prefix);
+                self.stack[i].add_output_prefix(add_prefix);
+            }
         }
         (i, out)
     }
-
-    fn add_output_prefix() {}
 
     fn push_empty(&mut self, _final: bool) {
         self.stack.push(UnCompiledNode::new(_final));
@@ -54,7 +57,7 @@ impl UnCompiledNodes {
 
     fn add_prefix(&mut self, key: &[u8]) {}
 
-    fn add_suffix(&mut self, key: &[u8], out: i64) {
+    fn add_suffix(&mut self, key: &[u8], out: u64) {
         if key.len() == 0 {
             return;
         }
@@ -68,26 +71,23 @@ impl UnCompiledNodes {
         self.push_empty(true);
     }
 
-    fn output_prefix(l: i64, r: i64) -> i64 {
+    fn output_prefix(l: u64, r: u64) -> u64 {
         if l < r {
             return l;
         }
         r
     }
 
-    fn output_sub(l: i64, r: i64) -> i64 {
+    fn output_sub(l: u64, r: u64) -> u64 {
         l - r
-    }
-
-    fn output_cat(l: i64, r: i64) -> i64 {
-        l + r
     }
 }
 
 pub struct UnCompiledNode {
     pub num_arc: usize, //边的数量
     pub arcs: Vec<Arc>,
-    is_final: bool,
+    pub is_final: bool,
+    pub final_output: u64,
 }
 
 impl UnCompiledNode {
@@ -96,13 +96,37 @@ impl UnCompiledNode {
             num_arc: 0,
             arcs: Vec::new(),
             is_final: _final,
+            final_output: 0,
         }
     }
 
     fn print(&self) {
         for v in self.arcs.iter() {
-            print!("arc: in: {}, out:{} ", v._in as char, v.out);
+            print!(
+                "arc: in: {}, out:{} ,final_out:{} ;",
+                v._in as char, v.out, self.final_output
+            );
         }
+    }
+
+    fn add_output_prefix(&mut self, prefix_len: u64) {
+        if self.is_final {
+            // self.arcs.get_mut(index: I)
+            // if self.num_arc == 0 {
+            //     return;
+            // }
+            // let arc = &mut self.arcs[self.num_arc - 1];
+            self.final_output = Self::output_cat(prefix_len, self.final_output);
+        }
+        if self.num_arc == 0 {
+            return;
+        }
+        for i in 0..self.num_arc - 1 {
+            let arc = &mut self.arcs[i];
+            arc.out = Self::output_cat(prefix_len, arc.out);
+        }
+        let arc = &mut self.arcs[self.num_arc - 1];
+        arc.out = Self::output_cat(prefix_len, arc.out);
     }
 
     fn last_compiled(&mut self, addr: u32) {
@@ -122,18 +146,18 @@ impl UnCompiledNode {
         self.arcs[self.num_arc - 1]._in
     }
 
-    fn last_out(&self) -> i64 {
+    fn last_out(&self) -> u64 {
         if self.num_arc == 0 {
             return 0;
         }
         self.arcs[self.num_arc - 1].out
     }
 
-    fn set_last_out(&mut self, out: i64) {
+    fn set_last_out(&mut self, out: u64) {
         self.arcs[self.num_arc - 1].out = out
     }
 
-    fn set_in_out(&mut self, _in: u8, out: i64) {
+    fn set_in_out(&mut self, _in: u8, out: u64) {
         if self.num_arc == 0 {
             self.push_arc(Arc::new(_in, out));
             return;
@@ -142,23 +166,27 @@ impl UnCompiledNode {
         arc._in = _in;
         arc.out = out;
     }
+
+    fn output_cat(l: u64, r: u64) -> u64 {
+        l + r
+    }
 }
 
 struct BuilderNode {}
 
 pub struct Arc {
     pub _in: u8,
-    pub out: i64,
-    pub is_final: bool,
+    pub out: u64,
+    pub final_output: u64,
     pub target: u32,
 }
 
 impl Arc {
-    fn new(_in: u8, out: i64) -> Arc {
+    fn new(_in: u8, out: u64) -> Arc {
         Self {
             _in: _in,
             out: out,
-            is_final: false,
+            final_output: 0,
             target: 0,
         }
     }
@@ -183,7 +211,7 @@ impl<W: Write> Builder<W> {
         self.unfinished.print();
     }
 
-    fn add(&mut self, key: &[u8], val: i64) -> Result<()> {
+    fn add(&mut self, key: &[u8], val: u64) -> Result<()> {
         let (prefix_len, out) = self.unfinished.find_common_prefix(key, val);
         self.freeze_tail(prefix_len)?;
         self.unfinished.add_suffix(&key[prefix_len..], out);

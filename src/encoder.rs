@@ -12,7 +12,7 @@ const BIT_ARC_HAS_OUPPUT: u8 = 1 << 4;
 const BIT_ARC_HAS_FINAL_OUTPUT: u8 = 1 << 5;
 const BIT_TARGET_DELTA: u8 = 1 << 6;
 
-const NO_OUTPUT: i64 = 0;
+const NO_OUTPUT: u64 = 0;
 
 pub struct Encoder<W: Write> {
     writer: W,
@@ -42,7 +42,6 @@ impl<W: Write> Encoder<W> {
             }
             if _a.out != NO_OUTPUT {
                 flag |= BIT_ARC_HAS_OUPPUT;
-                //  self.write_v_u64(_a.out)?;
             }
             self.write_byte(_a._in)?;
             self.write_byte(flag)?;
