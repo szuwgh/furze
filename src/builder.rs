@@ -21,6 +21,7 @@ impl UnCompiledNodes {
 
     fn find_common_prefix(&mut self, key: &[u8], mut out: u64) -> (usize, u64) {
         let mut i: usize = 0;
+        let mut j: usize = 0;
         while i < key.len() {
             if i >= self.stack.len() {
                 break;
@@ -31,13 +32,15 @@ impl UnCompiledNodes {
                 add_prefix = Self::output_sub(self.stack[i].last_out(), common_pre);
                 out = Self::output_sub(out, common_pre);
                 self.stack[i].set_last_out(common_pre);
+                j = i;
                 i += 1;
             } else {
                 break;
             }
             if add_prefix > 0 {
-                println!("add_prefix:{}", add_prefix);
-                self.stack[i].add_output_prefix(add_prefix);
+                let final_out = self.stack[i].add_output_prefix(add_prefix);
+                println!("final_out：{}", final_out);
+                self.stack[j].set_final_out(final_out);
             }
         }
         (i, out)
@@ -104,22 +107,19 @@ impl UnCompiledNode {
         for v in self.arcs.iter() {
             print!(
                 "arc: in: {}, out:{} ,final_out:{} ;",
-                v._in as char, v.out, self.final_output
+                v._in as char, v.out, v.final_output
             );
         }
     }
 
-    fn add_output_prefix(&mut self, prefix_len: u64) {
+    fn add_output_prefix(&mut self, prefix_len: u64) -> u64 {
+        let mut final_out: u64 = 0;
         if self.is_final {
-            // self.arcs.get_mut(index: I)
-            // if self.num_arc == 0 {
-            //     return;
-            // }
-            // let arc = &mut self.arcs[self.num_arc - 1];
-            self.final_output = Self::output_cat(prefix_len, self.final_output);
+            final_out = Self::output_cat(prefix_len, self.final_output);
+            //self.final_output = final_out
         }
         if self.num_arc == 0 {
-            return;
+            return final_out;
         }
         for i in 0..self.num_arc - 1 {
             let arc = &mut self.arcs[i];
@@ -127,6 +127,7 @@ impl UnCompiledNode {
         }
         let arc = &mut self.arcs[self.num_arc - 1];
         arc.out = Self::output_cat(prefix_len, arc.out);
+        return final_out;
     }
 
     fn last_compiled(&mut self, addr: u32) {
@@ -155,6 +156,10 @@ impl UnCompiledNode {
 
     fn set_last_out(&mut self, out: u64) {
         self.arcs[self.num_arc - 1].out = out
+    }
+
+    fn set_final_out(&mut self, final_output: u64) {
+        self.arcs[self.num_arc - 1].final_output = final_output
     }
 
     fn set_in_out(&mut self, _in: u8, out: u64) {
@@ -257,6 +262,8 @@ mod tests {
         b.add("deep".as_bytes(), 10);
         b.add("do".as_bytes(), 15);
         b.add("dog".as_bytes(), 2);
+        b.add("dogg".as_bytes(), 6);
+        b.add("doggk".as_bytes(), 3);
         b.print()
     }
 }
