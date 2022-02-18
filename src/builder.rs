@@ -39,7 +39,6 @@ impl UnCompiledNodes {
             }
             if add_prefix > 0 {
                 let final_out = self.stack[i].add_output_prefix(add_prefix);
-                println!("final_out：{}", final_out);
                 self.stack[j].set_final_out(final_out);
             }
         }
@@ -54,8 +53,18 @@ impl UnCompiledNodes {
         self.stack.pop();
     }
 
+    fn pop_root(&mut self) -> Option<UnCompiledNode> {
+        self.stack.pop()
+    }
+
     fn pop_freeze(&mut self) -> Option<UnCompiledNode> {
         self.stack.pop()
+    }
+
+    fn top_last_freeze(&mut self, addr: i64) {
+        if let Some(n) = self.stack.last_mut() {
+            n.last_compiled(addr);
+        }
     }
 
     fn add_prefix(&mut self, key: &[u8]) {}
@@ -106,8 +115,8 @@ impl UnCompiledNode {
     fn print(&self) {
         for v in self.arcs.iter() {
             print!(
-                "arc: in: {}, out:{} ,final_out:{} ;",
-                v._in as char, v.out, v.final_output
+                "arc: in: {}, out:{} ,final_out:{}, target: {} ;",
+                v._in as char, v.out, v.final_out, v.target,
             );
         }
     }
@@ -130,9 +139,12 @@ impl UnCompiledNode {
         return final_out;
     }
 
-    fn last_compiled(&mut self, addr: u32) {
-        let arc = &mut self.arcs[self.num_arc - 1];
-        arc.target = addr;
+    fn last_compiled(&mut self, addr: i64) {
+        if let Some(a) = self.arcs.last_mut() {
+            a.target = addr;
+        }
+        // let arc = &mut self.arcs[self.num_arc - 1];
+        //arc.target = addr;
     }
 
     fn push_arc(&mut self, arc: Arc) {
@@ -159,7 +171,7 @@ impl UnCompiledNode {
     }
 
     fn set_final_out(&mut self, final_output: u64) {
-        self.arcs[self.num_arc - 1].final_output = final_output
+        self.arcs[self.num_arc - 1].final_out = final_output
     }
 
     fn set_in_out(&mut self, _in: u8, out: u64) {
@@ -182,8 +194,8 @@ struct BuilderNode {}
 pub struct Arc {
     pub _in: u8,
     pub out: u64,
-    pub final_output: u64,
-    pub target: u32,
+    pub final_out: u64,
+    pub target: i64,
 }
 
 impl Arc {
@@ -191,7 +203,7 @@ impl Arc {
         Self {
             _in: _in,
             out: out,
-            final_output: 0,
+            final_out: 0,
             target: 0,
         }
     }
@@ -226,11 +238,11 @@ impl<W: Write> Builder<W> {
     //c a t
     //d e e p
     fn freeze_tail(&mut self, prefix_len: usize) -> Result<()> {
-        let mut addr: u32 = 0;
+        let mut addr: i64 = -1;
         while prefix_len + 1 < self.unfinished.stack.len() {
-            if addr == 0 {
+            if addr == -1 {
                 self.unfinished.pop_empty();
-                addr = 1;
+                addr = 0;
             } else {
                 if let Some(mut unfinish_node) = self.unfinished.pop_freeze() {
                     unfinish_node.last_compiled(addr);
@@ -240,14 +252,21 @@ impl<W: Write> Builder<W> {
                 }
             }
         }
+        self.unfinished.top_last_freeze(addr);
         Ok(())
     }
 
-    fn compile_node(&mut self, node: UnCompiledNode) -> Result<u32> {
-        // for a in node.arcs.iter() {
-        //     // self.encoder.write_byte(b: u8)
-        // }
-        Ok(1)
+    fn compile_node(&mut self, node: UnCompiledNode) -> Result<i64> {
+        let addr = self.encoder.add_node(node)?;
+        Ok(addr)
+    }
+
+    fn finish(&mut self) -> Result<()> {
+        self.freeze_tail(0)?;
+        if let Some(node) = self.unfinished.pop_root() {
+            self.encoder.add_node(node)?;
+        }
+        Ok(())
     }
 }
 
@@ -259,11 +278,10 @@ mod tests {
     fn test_add() {
         let mut b = Builder::new(vec![]);
         b.add("cat".as_bytes(), 5);
-        b.add("deep".as_bytes(), 10);
-        b.add("do".as_bytes(), 15);
-        b.add("dog".as_bytes(), 2);
-        b.add("dogg".as_bytes(), 6);
-        b.add("doggk".as_bytes(), 3);
+        b.add("cb".as_bytes(), 10);
+        b.finish();
+
+        println!("{:?}", b.encoder.get_ref());
         b.print()
     }
 }
