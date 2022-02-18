@@ -62,16 +62,22 @@ impl<W: Write> Encoder<W> {
         Ok(self.last_forzen_node)
     }
 
-    fn write_v_u64(&mut self, out: u64) -> Result<u64> {
-        let mut n = out;
+    fn write_v64(&mut self, mut out: i64) -> Result<u64> {
         let mut i: u64 = 0;
-        while n >= 0x80 {
-            self.write_byte(MSB | (n as u8))?;
-            n >>= 7;
-            i += 1
+        while (out & !(0x7F as i64)) != 0 {
+            self.write_byte(((out & !(0x7F as i64)) | 0x80 as i64) as u8)?;
+            out >>= 7;
         }
-        i += 1;
-        self.write_byte(n as u8)?;
+        self.write_byte(out as u8)?;
+        // let mut n = out;
+        // let mut i: u64 = 0;
+        // while n >= 0x80 {
+        //     self.write_byte(MSB | (n as u8))?;
+        //     n >>= 7;
+        //     i += 1
+        // }
+        // i += 1;
+        // self.write_byte(n as u8)?;
         Ok(i)
     }
 
@@ -98,7 +104,7 @@ mod tests {
     fn test_encoder() {
         let v = vec![];
         let mut wtr = Encoder::new(v);
-        wtr.write_byte('b' as u8).unwrap();
+        //wtr.write_v_u64('b' as u8).unwrap();
         println!("{:?}", wtr.get_ref().len());
     }
 }

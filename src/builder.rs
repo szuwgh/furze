@@ -125,7 +125,6 @@ impl UnCompiledNode {
         let mut final_out: u64 = 0;
         if self.is_final {
             final_out = Self::output_cat(prefix_len, self.final_output);
-            //self.final_output = final_out
         }
         if self.num_arc == 0 {
             return final_out;
