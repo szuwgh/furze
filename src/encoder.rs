@@ -1,4 +1,5 @@
 use crate::builder::UnCompiledNode;
+use crate::encoder::Encoder;
 use anyhow::Result;
 use std::io::{Seek, Write};
 
