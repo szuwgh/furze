@@ -1,5 +1,4 @@
 use crate::builder::UnCompiledNode;
-use crate::encoder::Encoder;
 use anyhow::Result;
 use std::io::{Seek, Write};
 
@@ -43,18 +42,18 @@ impl<W: Write> Encoder<W> {
                 if self.last_forzen_node == _a.target {
                     flag |= BIT_TAGET_NEXT;
                 } else {
-                    self.position += self.write_v_u64(_a.target as u64)?;
+                    self.position += self.write_v64(_a.target)?;
                 }
             } else {
                 flag |= BIT_STOP_NODE;
             }
             if _a.out != NO_OUTPUT {
                 flag |= BIT_ARC_HAS_OUPPUT;
-                self.position += self.write_v_u64(_a.out)?;
+                self.position += self.write_v64(_a.out as i64)?;
             }
             if _a.final_out != NO_OUTPUT {
                 flag |= BIT_ARC_HAS_FINAL_OUTPUT;
-                self.position += self.write_v_u64(_a.final_out)?;
+                self.position += self.write_v64(_a.final_out as i64)?;
             }
             self.position += self.write_byte(_a._in)?;
             self.position += self.write_byte(flag)?;
@@ -63,7 +62,7 @@ impl<W: Write> Encoder<W> {
         Ok(self.last_forzen_node)
     }
 
-    fn write_v64(&mut self, mut out: i64) -> Result<u64> {
+    pub fn write_v64(&mut self, mut out: i64) -> Result<u64> {
         let mut i: u64 = 0;
         while (out & !(0x7F as i64)) != 0 {
             self.write_byte(((out & !(0x7F as i64)) | 0x80 as i64) as u8)?;
