@@ -16,9 +16,10 @@ const NO_OUTPUT: u64 = 0;
 
 pub struct Encoder<W: Write> {
     writer: W,
-    last_forzen_node: i64,
+    last_forzen_node: u64,
     node_count: u64,
     position: u64,
+    buffer: Vec<u8>,
 }
 
 impl<W: Write> Encoder<W> {
@@ -28,10 +29,11 @@ impl<W: Write> Encoder<W> {
             last_forzen_node: 0,
             node_count: 0,
             position: 0,
+            buffer: vec![0; 10],
         }
     }
 
-    pub fn add_node(&mut self, node: UnCompiledNode) -> Result<i64> {
+    pub fn add_node(&mut self, node: UnCompiledNode) -> Result<u64> {
         for (_i, _a) in node.arcs.iter().rev().enumerate() {
             let mut flag: u8 = 0;
             if _i == 0 {
@@ -49,40 +51,45 @@ impl<W: Write> Encoder<W> {
             }
             if _a.out != NO_OUTPUT {
                 flag |= BIT_ARC_HAS_OUPPUT;
-                self.position += self.write_v64(_a.out as i64)?;
+                self.position += self.write_v64(_a.out)?;
             }
             if _a.final_out != NO_OUTPUT {
                 flag |= BIT_ARC_HAS_FINAL_OUTPUT;
-                self.position += self.write_v64(_a.final_out as i64)?;
+                self.position += self.write_v64(_a.final_out)?;
             }
             self.position += self.write_byte(_a._in)?;
             self.position += self.write_byte(flag)?;
-            self.last_forzen_node = (self.position - 1) as i64;
+            self.last_forzen_node = (self.position - 1);
         }
         Ok(self.last_forzen_node)
     }
 
-    pub fn write_v64(&mut self, mut out: i64) -> Result<u64> {
-        let mut i: u64 = 0;
-        while (out & !(0x7F as i64)) != 0 {
-            self.write_byte(((out & !(0x7F as i64)) | 0x80 as i64) as u8)?;
-            out >>= 7;
+    pub fn write_v64(&mut self, out: u64) -> Result<u64> {
+        let mut n = out;
+        let mut i = 0;
+        while n >= 0x80 {
+            self.buffer[i] = MSB | (n as u8);
+            i += 1;
+            n >>= 7;
         }
-        self.write_byte(out as u8)?;
-        // let mut n = out;
-        // let mut i: u64 = 0;
-        // while n >= 0x80 {
-        //     self.write_byte(MSB | (n as u8))?;
-        //     n >>= 7;
-        //     i += 1
-        // }
-        // i += 1;
-        // self.write_byte(n as u8)?;
-        Ok(i)
+        self.buffer[i] = n as u8;
+        i += 1;
+        let b = self.reverse(i);
+        self.write_bytes(b)?;
+        Ok(0)
+    }
+
+    fn reverse(&mut self, i: usize) -> &[u8] {
+        &self.buffer[0..i]
     }
 
     fn write_byte(&mut self, b: u8) -> Result<u64> {
         self.writer.write(&[b])?;
+        Ok(1)
+    }
+
+    fn write_bytes(&mut self, b: &[u8]) -> Result<u64> {
+        self.writer.write(b)?;
         Ok(1)
     }
 
@@ -106,5 +113,12 @@ mod tests {
         let mut wtr = Encoder::new(v);
         //wtr.write_v_u64('b' as u8).unwrap();
         println!("{:?}", wtr.get_ref().len());
+    }
+
+    #[test]
+    fn test_slice() {
+        let mut v = [1, 2, 3];
+        v.reverse();
+        assert!(v == [3, 2, 1]);
     }
 }

@@ -61,7 +61,7 @@ impl UnCompiledNodes {
         self.stack.pop()
     }
 
-    fn top_last_freeze(&mut self, addr: i64) {
+    fn top_last_freeze(&mut self, addr: u64) {
         if let Some(n) = self.stack.last_mut() {
             n.last_compiled(addr);
         }
@@ -138,7 +138,7 @@ impl UnCompiledNode {
         return final_out;
     }
 
-    fn last_compiled(&mut self, addr: i64) {
+    fn last_compiled(&mut self, addr: u64) {
         if let Some(a) = self.arcs.last_mut() {
             a.target = addr;
         }
@@ -194,7 +194,7 @@ pub struct Arc {
     pub _in: u8,
     pub out: u64,
     pub final_out: u64,
-    pub target: i64,
+    pub target: u64,
 }
 
 impl Arc {
@@ -244,20 +244,20 @@ impl<W: Write> Builder<W> {
                 addr = 0;
             } else {
                 if let Some(mut unfinish_node) = self.unfinished.pop_freeze() {
-                    unfinish_node.last_compiled(addr);
+                    unfinish_node.last_compiled(addr as u64);
                     addr = self.compile_node(unfinish_node)?;
                 } else {
                     break;
                 }
             }
         }
-        self.unfinished.top_last_freeze(addr);
+        self.unfinished.top_last_freeze(addr as u64);
         Ok(())
     }
 
     fn compile_node(&mut self, node: UnCompiledNode) -> Result<i64> {
         let addr = self.encoder.add_node(node)?;
-        Ok(addr)
+        Ok(addr as i64)
     }
 
     fn finish(&mut self) -> Result<()> {
