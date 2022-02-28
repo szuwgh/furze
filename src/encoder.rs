@@ -39,8 +39,8 @@ impl<W: Write> Encoder<W> {
             if _i == 0 {
                 flag |= BIT_LAST_ARC;
             }
-            let has_target = _a.target > 0;
-            if has_target {
+
+            if _a.target > 0 {
                 if self.last_forzen_node == _a.target {
                     flag |= BIT_TAGET_NEXT;
                 } else {
@@ -59,28 +59,26 @@ impl<W: Write> Encoder<W> {
             }
             self.position += self.write_byte(_a._in)?;
             self.position += self.write_byte(flag)?;
-            self.last_forzen_node = (self.position - 1);
+            self.last_forzen_node = self.position - 1;
         }
         Ok(self.last_forzen_node)
     }
 
     pub fn write_v64(&mut self, out: u64) -> Result<u64> {
+        let mut buffer: [u8; 10] = [0; 10];
         let mut n = out;
         let mut i = 0;
         while n >= 0x80 {
-            self.buffer[i] = MSB | (n as u8);
+            buffer[i] = MSB | (n as u8);
             i += 1;
             n >>= 7;
         }
-        self.buffer[i] = n as u8;
+        buffer[i] = n as u8;
         i += 1;
-        let b = self.reverse(i);
+        let b = &mut buffer[0..i];
+        b.reverse();
         self.write_bytes(b)?;
         Ok(0)
-    }
-
-    fn reverse(&mut self, i: usize) -> &[u8] {
-        &self.buffer[0..i]
     }
 
     fn write_byte(&mut self, b: u8) -> Result<u64> {
@@ -111,7 +109,6 @@ mod tests {
     fn test_encoder() {
         let v = vec![];
         let mut wtr = Encoder::new(v);
-        //wtr.write_v_u64('b' as u8).unwrap();
         println!("{:?}", wtr.get_ref().len());
     }
 

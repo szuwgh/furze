@@ -35,10 +35,12 @@ impl Decoder {
     }
 
     fn find(&self, key: &[u8]) -> Option<u64> {
+        for _k in key.iter() {}
         Some(0)
     }
 
-    fn find_target_arc(_in: u8) -> Option<Arc> {
+    fn find_target_arc(&mut self, _in: u8) -> Option<Arc> {
+        let flag: u8 = self.read_byte();
         None
     }
 
@@ -79,6 +81,6 @@ mod tests {
         wtr.write_v64(45).unwrap();
         wtr.write_v64(466987741).unwrap();
         let mut dtr = Decoder::new(wtr.get_ref().to_vec());
-        //  println!("b:{}", dtr.read_v_u64());
+        println!("b:{:?}", dtr.read_v_u64().unwrap());
     }
 }
