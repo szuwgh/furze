@@ -1,59 +1,137 @@
 use crate::builder::Arc;
 use crate::encoder::Encoder;
+use crate::encoder::{
+    BIT_ARC_HAS_FINAL_OUTPUT, BIT_ARC_HAS_OUPPUT, BIT_FINAL_ARC, BIT_LAST_ARC, BIT_STOP_NODE,
+    BIT_TAGET_NEXT, BIT_TARGET_DELTA,
+};
+
+#[derive(Debug, Clone)]
+pub enum Error {
+    Eof,
+    Fail,
+    NotFound,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl std::error::Error for Error {}
+
+type FstResult<T> = Result<T, Error>;
 
 const DROP_MSB: u8 = 0b0111_1111;
 const MSB: u8 = 0b1000_0000;
 struct ReverseReader {
-    i: usize,
+    i: i32,
     data: Vec<u8>,
 }
 
 impl ReverseReader {
     fn new(data: Vec<u8>) -> ReverseReader {
         Self {
-            i: data.len() - 1,
+            i: (data.len() - 1) as i32,
             data: data,
         }
     }
 
-    fn read_byte(&mut self) -> u8 {
-        let b = self.data[self.i];
+    fn set_position(&mut self, postion: usize) {
+        self.i = postion as i32
+    }
+
+    fn read_byte(&mut self) -> FstResult<u8> {
+        if self.i < 0 {
+            return Err(Error::Eof);
+        }
+        let b = self.data[self.i as usize];
         self.i -= 1;
-        b
+        Ok(b)
     }
 }
 
-struct Decoder {
+pub struct Decoder {
     reader: ReverseReader,
 }
 
 impl Decoder {
-    fn new(data: Vec<u8>) -> Decoder {
+    pub fn new(data: Vec<u8>) -> Decoder {
         Self {
             reader: ReverseReader::new(data),
         }
     }
 
-    fn find(&self, key: &[u8]) -> Option<u64> {
-        for _k in key.iter() {}
-        Some(0)
+    pub fn find(&mut self, key: &[u8]) -> FstResult<u64> {
+        let mut arc = Arc::new(0, 0);
+        let mut out: u64 = 0;
+        for _k in key.iter() {
+            self.find_target_arc(*_k, &mut arc)?;
+            out += arc.out;
+        }
+        if arc.final_out > 0 {
+            out += arc.final_out;
+        }
+        Ok(out)
     }
 
-    fn find_target_arc(&mut self, _in: u8) -> Option<Arc> {
-        let flag: u8 = self.read_byte();
-        None
+    fn find_target_arc(&mut self, _in: u8, arc: &mut Arc) -> FstResult<()> {
+        self.read_first_arc(arc);
+        while true {
+            println!("{}", arc._in);
+            if arc._in == _in {
+                return Ok(());
+            } else if arc.is_last {
+                return Err(Error::NotFound);
+            } else {
+                self.read_next_arc(arc)?;
+            }
+        }
+        return Err(Error::NotFound);
     }
 
-    fn read_byte(&mut self) -> u8 {
+    fn read_first_arc(&mut self, arc: &mut Arc) -> FstResult<()> {
+        if arc.target > 0 {
+            self.reader.set_position(arc.target as usize);
+        }
+        self.read_next_arc(arc)
+    }
+
+    fn read_next_arc(&mut self, arc: &mut Arc) -> FstResult<()> {
+        arc.reset();
+        arc.flag = self.read_byte()?;
+        arc._in = self.read_byte()?;
+        // let mut arc = Arc::new(_in, 0);`
+        if arc.flag(BIT_ARC_HAS_FINAL_OUTPUT) {
+            let (v, _) = self.read_v_u64()?;
+            arc.final_out = v;
+        }
+
+        if arc.flag(BIT_ARC_HAS_OUPPUT) {
+            let (v, _) = self.read_v_u64()?;
+            arc.out = v;
+        }
+
+        if !arc.flag(BIT_TAGET_NEXT) {
+            let (v, _) = self.read_v_u64()?;
+            arc.target = v;
+        }
+        if arc.flag(BIT_LAST_ARC) {
+            arc.is_last = true;
+        }
+        Ok(())
+    }
+
+    fn read_byte(&mut self) -> FstResult<u8> {
         self.reader.read_byte()
     }
 
-    fn read_v_u64(&mut self) -> Option<(u64, usize)> {
+    fn read_v_u64(&mut self) -> FstResult<(u64, usize)> {
         let mut result: u64 = 0;
         let mut shift = 0;
         let mut success = false;
         loop {
-            let b = self.read_byte();
+            let b = self.read_byte()?;
             let msb_dropped = b & DROP_MSB;
             result |= (msb_dropped as u64) << shift;
             shift += 7;
@@ -63,9 +141,9 @@ impl Decoder {
             }
         }
         if success {
-            Some((result, shift / 7 as usize))
+            Ok((result, shift / 7 as usize))
         } else {
-            None
+            Err(Error::Fail)
         }
     }
 }

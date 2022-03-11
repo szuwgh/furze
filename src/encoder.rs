@@ -4,13 +4,13 @@ use std::io::{Seek, Write};
 
 const MSB: u8 = 0b1000_0000;
 
-const BIT_FINAL_ARC: u8 = 1 << 0;
-const BIT_LAST_ARC: u8 = 1 << 1;
-const BIT_TAGET_NEXT: u8 = 1 << 2;
-const BIT_STOP_NODE: u8 = 1 << 3;
-const BIT_ARC_HAS_OUPPUT: u8 = 1 << 4;
-const BIT_ARC_HAS_FINAL_OUTPUT: u8 = 1 << 5;
-const BIT_TARGET_DELTA: u8 = 1 << 6;
+pub const BIT_FINAL_ARC: u8 = 1 << 0;
+pub const BIT_LAST_ARC: u8 = 1 << 1;
+pub const BIT_TAGET_NEXT: u8 = 1 << 2;
+pub const BIT_STOP_NODE: u8 = 1 << 3;
+pub const BIT_ARC_HAS_OUPPUT: u8 = 1 << 4;
+pub const BIT_ARC_HAS_FINAL_OUTPUT: u8 = 1 << 5;
+pub const BIT_TARGET_DELTA: u8 = 1 << 6;
 
 const NO_OUTPUT: u64 = 0;
 
@@ -39,7 +39,6 @@ impl<W: Write> Encoder<W> {
             if _i == 0 {
                 flag |= BIT_LAST_ARC;
             }
-
             if _a.target > 0 {
                 if self.last_forzen_node == _a.target {
                     flag |= BIT_TAGET_NEXT;

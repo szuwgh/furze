@@ -1,3 +1,4 @@
+use crate::decoder::Decoder;
 use crate::encoder::Encoder;
 use anyhow::Result;
 use std::io::Write;
@@ -195,16 +196,33 @@ pub struct Arc {
     pub out: u64,
     pub final_out: u64,
     pub target: u64,
+    pub is_last: bool,
+    pub flag: u8,
 }
 
 impl Arc {
-    fn new(_in: u8, out: u64) -> Arc {
+    pub fn new(_in: u8, out: u64) -> Arc {
         Self {
             _in: _in,
             out: out,
             final_out: 0,
             target: 0,
+            is_last: false,
+            flag: 0,
         }
+    }
+
+    pub fn flag(&self, f: u8) -> bool {
+        return (self.flag & f) != 0;
+    }
+
+    pub fn reset(&mut self) {
+        self._in = 0;
+        self.out = 0;
+        self.final_out = 0;
+        self.target = 0;
+        self.is_last = false;
+        self.flag = 0;
     }
 }
 
@@ -277,10 +295,22 @@ mod tests {
     fn test_add() {
         let mut b = Builder::new(vec![]);
         b.add("cat".as_bytes(), 5);
-        b.add("cb".as_bytes(), 10);
+        b.add("deep".as_bytes(), 10);
+        b.add("do".as_bytes(), 15);
+        b.add("dog".as_bytes(), 2);
         b.finish();
 
         println!("{:?}", b.encoder.get_ref());
-        b.print()
+
+        let mut d = Decoder::new(b.encoder.get_ref().to_vec());
+        let v = d.find("do".as_bytes());
+        match v {
+            Ok(vv) => {
+                println!("v:{}", vv);
+            }
+            Err(e) => {
+                println!("e:{}", e);
+            }
+        }
     }
 }
