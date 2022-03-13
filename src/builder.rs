@@ -33,14 +33,14 @@ impl UnCompiledNodes {
                 add_prefix = Self::output_sub(self.stack[i].last_out(), common_pre);
                 out = Self::output_sub(out, common_pre);
                 self.stack[i].set_last_out(common_pre);
-                j = i;
+                // j = i;
                 i += 1;
             } else {
                 break;
             }
             if add_prefix > 0 {
                 let final_out = self.stack[i].add_output_prefix(add_prefix);
-                self.stack[j].set_final_out(final_out);
+                self.stack[i - 1].set_final_out(final_out);
             }
         }
         (i, out)
@@ -194,10 +194,12 @@ struct BuilderNode {}
 pub struct Arc {
     pub _in: u8,
     pub out: u64,
+
     pub final_out: u64,
     pub target: u64,
     pub is_last: bool,
     pub flag: u8,
+    pub is_stop: bool,
 }
 
 impl Arc {
@@ -209,6 +211,7 @@ impl Arc {
             target: 0,
             is_last: false,
             flag: 0,
+            is_stop: false,
         }
     }
 
@@ -223,6 +226,7 @@ impl Arc {
         self.target = 0;
         self.is_last = false;
         self.flag = 0;
+        self.is_stop = false;
     }
 }
 
@@ -303,14 +307,25 @@ mod tests {
         println!("{:?}", b.encoder.get_ref());
 
         let mut d = Decoder::new(b.encoder.get_ref().to_vec());
-        let v = d.find("do".as_bytes());
+        let v = d.find("deep".as_bytes());
         match v {
             Ok(vv) => {
                 println!("v:{}", vv);
             }
             Err(e) => {
-                println!("e:{}", e);
+                println!("e:{:?}", e);
             }
+        }
+        d.reset();
+        let v = d.near("e".as_bytes());
+        match v {
+            Ok(vv) => {
+                println!("vv:{}", vv);
+            }
+            Err(e) => {
+                println!("e:{:?}", e);
+            }
+            _ => {}
         }
     }
 }

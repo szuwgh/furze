@@ -10,15 +10,16 @@ pub enum Error {
     Eof,
     Fail,
     NotFound,
+    Greater,
 }
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
+// impl std::fmt::Display for Error {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "{}", self)
+//     }
+// }
 
-impl std::error::Error for Error {}
+// impl std::error::Error for Error {}
 
 type FstResult<T> = Result<T, Error>;
 
@@ -35,6 +36,10 @@ impl ReverseReader {
             i: (data.len() - 1) as i32,
             data: data,
         }
+    }
+
+    fn reset(&mut self) {
+        self.i = (self.data.len() - 1) as i32
     }
 
     fn set_position(&mut self, postion: usize) {
@@ -62,6 +67,63 @@ impl Decoder {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.reader.reset()
+    }
+
+    pub fn near(&mut self, key: &[u8]) -> FstResult<u64> {
+        let mut arc = Arc::new(0, 0);
+        let mut out: u64 = 0;
+        let mut frist: bool = false;
+        for _k in key.iter() {
+            let v = self.near_target_arc(*_k, &mut arc, frist);
+            match v {
+                Err(Error::Greater) => frist = true,
+                Err(Error::NotFound) => {
+                    return Err(Error::NotFound);
+                }
+                _ => {}
+            }
+            out += arc.out;
+            if arc.final_out > 0 {
+                out += arc.final_out;
+            }
+        }
+
+        loop {
+            println!("xxxx");
+            if arc.is_stop {
+                break;
+            } else {
+                self.read_first_arc(&mut arc)?;
+                out += arc.out;
+                if arc.final_out > 0 {
+                    out += arc.final_out;
+                }
+            }
+        }
+        Ok(out)
+    }
+
+    fn near_target_arc(&mut self, _in: u8, arc: &mut Arc, frist: bool) -> FstResult<()> {
+        self.read_first_arc(arc)?;
+        if frist {
+            return Ok(());
+        }
+        loop {
+            if arc._in == _in {
+                return Ok(());
+            } else if arc._in > _in {
+                return Err(Error::Greater);
+            } else if arc.is_last {
+                return Err(Error::NotFound);
+            } else {
+                self.read_next_arc(arc)?;
+            }
+        }
+        return Err(Error::NotFound);
+    }
+
     pub fn find(&mut self, key: &[u8]) -> FstResult<u64> {
         let mut arc = Arc::new(0, 0);
         let mut out: u64 = 0;
@@ -76,8 +138,8 @@ impl Decoder {
     }
 
     fn find_target_arc(&mut self, _in: u8, arc: &mut Arc) -> FstResult<()> {
-        self.read_first_arc(arc);
-        while true {
+        self.read_first_arc(arc)?;
+        loop {
             println!("{}", arc._in);
             if arc._in == _in {
                 return Ok(());
@@ -119,6 +181,10 @@ impl Decoder {
         if arc.flag(BIT_LAST_ARC) {
             arc.is_last = true;
         }
+        if arc.flag(BIT_STOP_NODE) {
+            arc.is_stop = true;
+        }
+
         Ok(())
     }
 
