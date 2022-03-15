@@ -1,6 +1,6 @@
 use crate::decoder::Decoder;
 use crate::encoder::Encoder;
-use anyhow::Result;
+use crate::error::FstResult;
 use std::io::Write;
 
 struct UnCompiledNodes {
@@ -22,7 +22,6 @@ impl UnCompiledNodes {
 
     fn find_common_prefix(&mut self, key: &[u8], mut out: u64) -> (usize, u64) {
         let mut i: usize = 0;
-        let mut j: usize = 0;
         while i < key.len() {
             if i >= self.stack.len() {
                 break;
@@ -33,7 +32,6 @@ impl UnCompiledNodes {
                 add_prefix = Self::output_sub(self.stack[i].last_out(), common_pre);
                 out = Self::output_sub(out, common_pre);
                 self.stack[i].set_last_out(common_pre);
-                // j = i;
                 i += 1;
             } else {
                 break;
@@ -78,7 +76,8 @@ impl UnCompiledNodes {
         self.stack[last].push_arc(Arc::new(key[0], out));
         for v in &key[1..] {
             let mut next = UnCompiledNode::new(false);
-            next.push_arc(Arc::new(*v, 0));
+            let arc = Arc::new(*v, 0);
+            next.push_arc(arc);
             self.stack.push(next);
         }
         self.push_empty(true);
@@ -143,8 +142,6 @@ impl UnCompiledNode {
         if let Some(a) = self.arcs.last_mut() {
             a.target = addr;
         }
-        // let arc = &mut self.arcs[self.num_arc - 1];
-        //arc.target = addr;
     }
 
     fn push_arc(&mut self, arc: Arc) {
@@ -153,25 +150,30 @@ impl UnCompiledNode {
     }
 
     fn last_in(&self) -> u8 {
-        if self.num_arc == 0 {
-            return 0;
+        if let Some(a) = self.arcs.last() {
+            return a._in;
         }
-        self.arcs[self.num_arc - 1]._in
+        0
     }
 
     fn last_out(&self) -> u64 {
-        if self.num_arc == 0 {
-            return 0;
+        if let Some(a) = self.arcs.last() {
+            return a.out;
         }
-        self.arcs[self.num_arc - 1].out
+        0
     }
 
     fn set_last_out(&mut self, out: u64) {
-        self.arcs[self.num_arc - 1].out = out
+        if let Some(a) = self.arcs.last_mut() {
+            a.out = out
+        }
     }
 
     fn set_final_out(&mut self, final_output: u64) {
-        self.arcs[self.num_arc - 1].final_out = final_output
+        if let Some(a) = self.arcs.last_mut() {
+            a.final_out = final_output;
+            a.is_final = true
+        }
     }
 
     fn set_in_out(&mut self, _in: u8, out: u64) {
@@ -179,9 +181,10 @@ impl UnCompiledNode {
             self.push_arc(Arc::new(_in, out));
             return;
         }
-        let arc = &mut self.arcs[self.num_arc - 1];
-        arc._in = _in;
-        arc.out = out;
+        if let Some(a) = self.arcs.last_mut() {
+            a._in = _in;
+            a.out = out;
+        }
     }
 
     fn output_cat(l: u64, r: u64) -> u64 {
@@ -200,6 +203,7 @@ pub struct Arc {
     pub is_last: bool,
     pub flag: u8,
     pub is_stop: bool,
+    pub is_final: bool,
 }
 
 impl Arc {
@@ -212,6 +216,7 @@ impl Arc {
             is_last: false,
             flag: 0,
             is_stop: false,
+            is_final: false,
         }
     }
 
@@ -249,16 +254,14 @@ impl<W: Write> Builder<W> {
         self.unfinished.print();
     }
 
-    fn add(&mut self, key: &[u8], val: u64) -> Result<()> {
+    fn add(&mut self, key: &[u8], val: u64) -> FstResult<()> {
         let (prefix_len, out) = self.unfinished.find_common_prefix(key, val);
         self.freeze_tail(prefix_len)?;
         self.unfinished.add_suffix(&key[prefix_len..], out);
         Ok(())
     }
 
-    //c a t
-    //d e e p
-    fn freeze_tail(&mut self, prefix_len: usize) -> Result<()> {
+    fn freeze_tail(&mut self, prefix_len: usize) -> FstResult<()> {
         let mut addr: i64 = -1;
         while prefix_len + 1 < self.unfinished.stack.len() {
             if addr == -1 {
@@ -277,12 +280,12 @@ impl<W: Write> Builder<W> {
         Ok(())
     }
 
-    fn compile_node(&mut self, node: UnCompiledNode) -> Result<i64> {
+    fn compile_node(&mut self, node: UnCompiledNode) -> FstResult<i64> {
         let addr = self.encoder.add_node(node)?;
         Ok(addr as i64)
     }
 
-    fn finish(&mut self) -> Result<()> {
+    fn finish(&mut self) -> FstResult<()> {
         self.freeze_tail(0)?;
         if let Some(node) = self.unfinished.pop_root() {
             self.encoder.add_node(node)?;
@@ -299,15 +302,16 @@ mod tests {
     fn test_add() {
         let mut b = Builder::new(vec![]);
         b.add("cat".as_bytes(), 5);
-        b.add("deep".as_bytes(), 10);
-        b.add("do".as_bytes(), 15);
-        b.add("dog".as_bytes(), 2);
+        b.add("d".as_bytes(), 8);
+        b.add("d22222222".as_bytes(), 6);
+        b.add("d2222222222".as_bytes(), 15);
+        b.add("f".as_bytes(), 30);
         b.finish();
 
         println!("{:?}", b.encoder.get_ref());
 
         let mut d = Decoder::new(b.encoder.get_ref().to_vec());
-        let v = d.find("deep".as_bytes());
+        let v = d.find("b".as_bytes());
         match v {
             Ok(vv) => {
                 println!("v:{}", vv);
@@ -316,8 +320,9 @@ mod tests {
                 println!("e:{:?}", e);
             }
         }
+
         d.reset();
-        let v = d.near("e".as_bytes());
+        let v = d.near("d23".as_bytes());
         match v {
             Ok(vv) => {
                 println!("vv:{}", vv);

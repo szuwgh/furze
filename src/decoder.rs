@@ -4,24 +4,8 @@ use crate::encoder::{
     BIT_ARC_HAS_FINAL_OUTPUT, BIT_ARC_HAS_OUPPUT, BIT_FINAL_ARC, BIT_LAST_ARC, BIT_STOP_NODE,
     BIT_TAGET_NEXT, BIT_TARGET_DELTA,
 };
-
-#[derive(Debug, Clone)]
-pub enum Error {
-    Eof,
-    Fail,
-    NotFound,
-    Greater,
-}
-
-// impl std::fmt::Display for Error {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{}", self)
-//     }
-// }
-
-// impl std::error::Error for Error {}
-
-type FstResult<T> = Result<T, Error>;
+use crate::error::FstError;
+use crate::error::FstResult;
 
 const DROP_MSB: u8 = 0b0111_1111;
 const MSB: u8 = 0b1000_0000;
@@ -48,7 +32,7 @@ impl ReverseReader {
 
     fn read_byte(&mut self) -> FstResult<u8> {
         if self.i < 0 {
-            return Err(Error::Eof);
+            return Err(FstError::Eof);
         }
         let b = self.data[self.i as usize];
         self.i -= 1;
@@ -67,6 +51,8 @@ impl Decoder {
         }
     }
 
+    pub fn print() {}
+
     pub fn reset(&mut self) {
         self.reader.reset()
     }
@@ -75,35 +61,26 @@ impl Decoder {
         let mut arc = Arc::new(0, 0);
         let mut out: u64 = 0;
         let mut frist: bool = false;
+
         for _k in key.iter() {
             let v = self.near_target_arc(*_k, &mut arc, frist);
             match v {
-                Err(Error::Greater) => frist = true,
-                Err(Error::NotFound) => {
-                    return Err(Error::NotFound);
+                Err(FstError::Greater) => {
+                    frist = true;
+                    break;
+                }
+                Err(FstError::NotFound) => {
+                    return Err(FstError::NotFound);
                 }
                 _ => {}
             }
             out += arc.out;
-            if arc.final_out > 0 {
-                out += arc.final_out;
-            }
         }
-
-        loop {
-            println!("xxxx");
-            if arc.is_stop {
-                break;
-            } else {
-                self.read_first_arc(&mut arc)?;
-                out += arc.out;
-                if arc.final_out > 0 {
-                    out += arc.final_out;
-                }
-            }
-        }
+        out += arc.final_out;
         Ok(out)
     }
+
+    fn near_next(&mut self, _in: u8, arc: &mut Arc) {}
 
     fn near_target_arc(&mut self, _in: u8, arc: &mut Arc, frist: bool) -> FstResult<()> {
         self.read_first_arc(arc)?;
@@ -114,14 +91,13 @@ impl Decoder {
             if arc._in == _in {
                 return Ok(());
             } else if arc._in > _in {
-                return Err(Error::Greater);
+                return Err(FstError::Greater);
             } else if arc.is_last {
-                return Err(Error::NotFound);
+                return Err(FstError::NotFound);
             } else {
                 self.read_next_arc(arc)?;
             }
         }
-        return Err(Error::NotFound);
     }
 
     pub fn find(&mut self, key: &[u8]) -> FstResult<u64> {
@@ -131,25 +107,22 @@ impl Decoder {
             self.find_target_arc(*_k, &mut arc)?;
             out += arc.out;
         }
-        if arc.final_out > 0 {
-            out += arc.final_out;
-        }
+        out += arc.final_out;
         Ok(out)
     }
 
     fn find_target_arc(&mut self, _in: u8, arc: &mut Arc) -> FstResult<()> {
         self.read_first_arc(arc)?;
         loop {
-            println!("{}", arc._in);
+            println!("in:{},target:{}", arc._in, arc.target);
             if arc._in == _in {
                 return Ok(());
             } else if arc.is_last {
-                return Err(Error::NotFound);
+                return Err(FstError::NotFound);
             } else {
                 self.read_next_arc(arc)?;
             }
         }
-        return Err(Error::NotFound);
     }
 
     fn read_first_arc(&mut self, arc: &mut Arc) -> FstResult<()> {
@@ -163,7 +136,6 @@ impl Decoder {
         arc.reset();
         arc.flag = self.read_byte()?;
         arc._in = self.read_byte()?;
-        // let mut arc = Arc::new(_in, 0);`
         if arc.flag(BIT_ARC_HAS_FINAL_OUTPUT) {
             let (v, _) = self.read_v_u64()?;
             arc.final_out = v;
@@ -173,16 +145,16 @@ impl Decoder {
             let (v, _) = self.read_v_u64()?;
             arc.out = v;
         }
-
-        if !arc.flag(BIT_TAGET_NEXT) {
-            let (v, _) = self.read_v_u64()?;
-            arc.target = v;
+        if arc.flag(BIT_STOP_NODE) {
+            arc.is_stop = true;
+        } else {
+            if !arc.flag(BIT_TAGET_NEXT) {
+                let (v, _) = self.read_v_u64()?;
+                arc.target = v;
+            }
         }
         if arc.flag(BIT_LAST_ARC) {
             arc.is_last = true;
-        }
-        if arc.flag(BIT_STOP_NODE) {
-            arc.is_stop = true;
         }
 
         Ok(())
@@ -209,7 +181,7 @@ impl Decoder {
         if success {
             Ok((result, shift / 7 as usize))
         } else {
-            Err(Error::Fail)
+            Err(FstError::Fail)
         }
     }
 }

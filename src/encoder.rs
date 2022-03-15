@@ -1,6 +1,6 @@
 use crate::builder::UnCompiledNode;
-use anyhow::Result;
-use std::io::{Seek, Write};
+use crate::error::{FstError, FstResult};
+use std::io::Write;
 
 const MSB: u8 = 0b1000_0000;
 
@@ -33,7 +33,7 @@ impl<W: Write> Encoder<W> {
         }
     }
 
-    pub fn add_node(&mut self, node: UnCompiledNode) -> Result<u64> {
+    pub fn add_node(&mut self, node: UnCompiledNode) -> FstResult<u64> {
         for (_i, _a) in node.arcs.iter().rev().enumerate() {
             let mut flag: u8 = 0;
             if _i == 0 {
@@ -63,7 +63,7 @@ impl<W: Write> Encoder<W> {
         Ok(self.last_forzen_node)
     }
 
-    pub fn write_v64(&mut self, out: u64) -> Result<u64> {
+    pub fn write_v64(&mut self, out: u64) -> FstResult<u64> {
         let mut buffer: [u8; 10] = [0; 10];
         let mut n = out;
         let mut i = 0;
@@ -77,22 +77,24 @@ impl<W: Write> Encoder<W> {
         let b = &mut buffer[0..i];
         b.reverse();
         self.write_bytes(b)?;
-        Ok(0)
+        Ok(i as u64)
     }
 
-    fn write_byte(&mut self, b: u8) -> Result<u64> {
-        self.writer.write(&[b])?;
-        Ok(1)
+    fn write_byte(&mut self, b: u8) -> FstResult<u64> {
+        let size = self
+            .writer
+            .write(&[b])
+            .map_err(|e| FstError::IoWriteFail(e))?;
+        Ok(size as u64)
     }
 
-    fn write_bytes(&mut self, b: &[u8]) -> Result<u64> {
-        self.writer.write(b)?;
-        Ok(1)
+    fn write_bytes(&mut self, b: &[u8]) -> FstResult<u64> {
+        let size = self.writer.write(b).map_err(|e| FstError::IoWriteFail(e))?;
+        Ok(size as u64)
     }
 
-    fn flush(&mut self) -> Result<()> {
-        self.writer.flush()?;
-        Ok(())
+    fn flush(&mut self) -> FstResult<()> {
+        self.writer.flush().map_err(|e| FstError::IoWriteFail(e))
     }
 
     pub fn get_ref(&self) -> &W {
