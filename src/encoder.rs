@@ -39,6 +39,9 @@ impl<W: Write> Encoder<W> {
             if _i == 0 {
                 flag |= BIT_LAST_ARC;
             }
+            if _a.is_final {
+                flag |= BIT_FINAL_ARC;
+            }
             if _a.target > 0 {
                 if self.last_forzen_node == _a.target {
                     flag |= BIT_TAGET_NEXT;

@@ -26,8 +26,8 @@ impl ReverseReader {
         self.i = (self.data.len() - 1) as i32
     }
 
-    fn set_position(&mut self, postion: usize) {
-        self.i = postion as i32
+    fn set_position(&mut self, postion: i32) {
+        self.i = postion
     }
 
     fn read_byte(&mut self) -> FstResult<u8> {
@@ -37,6 +37,10 @@ impl ReverseReader {
         let b = self.data[self.i as usize];
         self.i -= 1;
         Ok(b)
+    }
+
+    fn get_position(&self) -> i32 {
+        self.i
     }
 }
 
@@ -51,42 +55,76 @@ impl Decoder {
         }
     }
 
-    pub fn print() {}
-
     pub fn reset(&mut self) {
         self.reader.reset()
     }
 
     pub fn near(&mut self, key: &[u8]) -> FstResult<u64> {
         let mut arc = Arc::new(0, 0);
+        self.near_next(key, &mut arc)
+    }
+
+    pub fn near_next(&mut self, key: &[u8], arc: &mut Arc) -> FstResult<u64> {
+        let mut frist_k = 0;
+        if key.len() > 0 {
+            frist_k = key[0];
+        }
         let mut out: u64 = 0;
         let mut frist: bool = false;
+        loop {
+            let frist_res = self.near_target_arc(frist_k, arc, frist);
+            let position = self.reader.get_position();
 
-        for _k in key.iter() {
-            let v = self.near_target_arc(*_k, &mut arc, frist);
-            match v {
-                Err(FstError::Greater) => {
-                    frist = true;
-                    break;
-                }
-                Err(FstError::NotFound) => {
-                    return Err(FstError::NotFound);
-                }
-                _ => {}
+            match frist_res {
+                Err(e) => match e {
+                    FstError::Greater => {
+                        frist = true;
+                    }
+                    _ => {
+                        return Err(FstError::NotFound);
+                    }
+                },
+                Ok(()) => {}
             }
             out += arc.out;
+            if frist {
+                loop {
+                    if arc.is_final {
+                        break;
+                    }
+                    self.read_first_arc(arc)?;
+                    out += arc.out;
+                }
+                out += arc.final_out;
+            } else {
+                let res = self.near_next(&key[1..], arc);
+                match res {
+                    Ok(_out) => {
+                        out += _out;
+                    }
+                    Err(e) => {
+                        if !arc.is_last {
+                            self.reader.set_position(position);
+                            arc.reset();
+                            continue;
+                        }
+                        return Err(FstError::NotFound);
+                    }
+                }
+            }
+            break;
         }
-        out += arc.final_out;
+
         Ok(out)
     }
 
-    fn near_next(&mut self, _in: u8, arc: &mut Arc) {}
-
     fn near_target_arc(&mut self, _in: u8, arc: &mut Arc, frist: bool) -> FstResult<()> {
         self.read_first_arc(arc)?;
+
         if frist {
             return Ok(());
         }
+
         loop {
             if arc._in == _in {
                 return Ok(());
@@ -114,7 +152,6 @@ impl Decoder {
     fn find_target_arc(&mut self, _in: u8, arc: &mut Arc) -> FstResult<()> {
         self.read_first_arc(arc)?;
         loop {
-            println!("in:{},target:{}", arc._in, arc.target);
             if arc._in == _in {
                 return Ok(());
             } else if arc.is_last {
@@ -127,7 +164,7 @@ impl Decoder {
 
     fn read_first_arc(&mut self, arc: &mut Arc) -> FstResult<()> {
         if arc.target > 0 {
-            self.reader.set_position(arc.target as usize);
+            self.reader.set_position(arc.target as i32);
         }
         self.read_next_arc(arc)
     }
@@ -155,6 +192,9 @@ impl Decoder {
         }
         if arc.flag(BIT_LAST_ARC) {
             arc.is_last = true;
+        }
+        if arc.flag(BIT_FINAL_ARC) {
+            arc.is_final = true;
         }
 
         Ok(())
@@ -197,6 +237,5 @@ mod tests {
         wtr.write_v64(45).unwrap();
         wtr.write_v64(466987741).unwrap();
         let mut dtr = Decoder::new(wtr.get_ref().to_vec());
-        println!("b:{:?}", dtr.read_v_u64().unwrap());
     }
 }
