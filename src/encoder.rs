@@ -1,25 +1,19 @@
-use crate::builder::UnCompiledNode;
 use crate::error::{FstError, FstResult};
+use crate::state::UnCompiledNode;
+use crate::state::{
+    BIT_FINAL_STATE, BIT_LAST_STATE, BIT_STATE_HAS_FINAL_OUTPUT, BIT_STATE_HAS_OUPPUT,
+    BIT_STOP_NODE, BIT_TAGET_NEXT, BIT_TARGET_DELTA,
+};
 use std::io::Write;
 
 const MSB: u8 = 0b1000_0000;
-
-pub const BIT_FINAL_ARC: u8 = 1 << 0;
-pub const BIT_LAST_ARC: u8 = 1 << 1;
-pub const BIT_TAGET_NEXT: u8 = 1 << 2;
-pub const BIT_STOP_NODE: u8 = 1 << 3;
-pub const BIT_ARC_HAS_OUPPUT: u8 = 1 << 4;
-pub const BIT_ARC_HAS_FINAL_OUTPUT: u8 = 1 << 5;
-pub const BIT_TARGET_DELTA: u8 = 1 << 6;
 
 const NO_OUTPUT: u64 = 0;
 
 pub struct Encoder<W: Write> {
     writer: W,
     last_forzen_node: u64,
-    node_count: u64,
     position: u64,
-    buffer: Vec<u8>,
 }
 
 impl<W: Write> Encoder<W> {
@@ -27,39 +21,37 @@ impl<W: Write> Encoder<W> {
         Self {
             writer: w,
             last_forzen_node: 0,
-            node_count: 0,
             position: 0,
-            buffer: vec![0; 10],
         }
     }
 
     pub fn add_node(&mut self, node: UnCompiledNode) -> FstResult<u64> {
-        for (_i, _a) in node.arcs.iter().rev().enumerate() {
+        for (_i, _s) in node.states.iter().rev().enumerate() {
             let mut flag: u8 = 0;
             if _i == 0 {
-                flag |= BIT_LAST_ARC;
+                flag |= BIT_LAST_STATE;
             }
-            if _a.is_final {
-                flag |= BIT_FINAL_ARC;
+            if _s.is_final {
+                flag |= BIT_FINAL_STATE;
             }
-            if _a.target > 0 {
-                if self.last_forzen_node == _a.target {
+            if _s.target > 0 {
+                if self.last_forzen_node == _s.target {
                     flag |= BIT_TAGET_NEXT;
                 } else {
-                    self.position += self.write_v64(_a.target)?;
+                    self.position += self.write_v64(_s.target)?;
                 }
             } else {
                 flag |= BIT_STOP_NODE;
             }
-            if _a.out != NO_OUTPUT {
-                flag |= BIT_ARC_HAS_OUPPUT;
-                self.position += self.write_v64(_a.out)?;
+            if _s.out != NO_OUTPUT {
+                flag |= BIT_STATE_HAS_OUPPUT;
+                self.position += self.write_v64(_s.out)?;
             }
-            if _a.final_out != NO_OUTPUT {
-                flag |= BIT_ARC_HAS_FINAL_OUTPUT;
-                self.position += self.write_v64(_a.final_out)?;
+            if _s.final_out != NO_OUTPUT {
+                flag |= BIT_STATE_HAS_FINAL_OUTPUT;
+                self.position += self.write_v64(_s.final_out)?;
             }
-            self.position += self.write_byte(_a._in)?;
+            self.position += self.write_byte(_s._in)?;
             self.position += self.write_byte(flag)?;
             self.last_forzen_node = self.position - 1;
         }

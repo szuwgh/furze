@@ -5,5 +5,14 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[lib]
+crate-type = ["staticlib"]
+
+[build-dependencies]
+cbindgen = "0.20.0"
+
 [dependencies]
 thiserror = "1.0"
+
+

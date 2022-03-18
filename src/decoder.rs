@@ -1,21 +1,22 @@
-use crate::builder::Arc;
 use crate::encoder::Encoder;
-use crate::encoder::{
-    BIT_ARC_HAS_FINAL_OUTPUT, BIT_ARC_HAS_OUPPUT, BIT_FINAL_ARC, BIT_LAST_ARC, BIT_STOP_NODE,
-    BIT_TAGET_NEXT, BIT_TARGET_DELTA,
-};
 use crate::error::FstError;
 use crate::error::FstResult;
+use crate::state::State;
+use crate::state::{
+    BIT_FINAL_STATE, BIT_LAST_STATE, BIT_STATE_HAS_FINAL_OUTPUT, BIT_STATE_HAS_OUPPUT,
+    BIT_STOP_NODE, BIT_TAGET_NEXT, BIT_TARGET_DELTA,
+};
 
 const DROP_MSB: u8 = 0b0111_1111;
 const MSB: u8 = 0b1000_0000;
-struct ReverseReader {
+
+struct ReverseReader<'a> {
     i: i32,
-    data: Vec<u8>,
+    data: &'a [u8],
 }
 
-impl ReverseReader {
-    fn new(data: Vec<u8>) -> ReverseReader {
+impl<'a> ReverseReader<'a> {
+    fn new(data: &'a [u8]) -> ReverseReader {
         Self {
             i: (data.len() - 1) as i32,
             data: data,
@@ -44,12 +45,12 @@ impl ReverseReader {
     }
 }
 
-pub struct Decoder {
-    reader: ReverseReader,
+pub struct Decoder<'a> {
+    reader: ReverseReader<'a>,
 }
 
-impl Decoder {
-    pub fn new(data: Vec<u8>) -> Decoder {
+impl<'a> Decoder<'a> {
+    pub fn new(data: &'a [u8]) -> Decoder {
         Self {
             reader: ReverseReader::new(data),
         }
@@ -60,25 +61,25 @@ impl Decoder {
     }
 
     pub fn near(&mut self, key: &[u8]) -> FstResult<u64> {
-        let mut arc = Arc::new(0, 0);
-        self.near_next(key, &mut arc)
+        let mut state = State::new(0, 0);
+        self.near_next(key, &mut state)
     }
 
-    pub fn near_next(&mut self, key: &[u8], arc: &mut Arc) -> FstResult<u64> {
+    fn near_next(&mut self, key: &[u8], state: &mut State) -> FstResult<u64> {
         let mut frist_k = 0;
         if key.len() > 0 {
             frist_k = key[0];
         }
         let mut out: u64 = 0;
-        let mut frist: bool = false;
+        let mut greater: bool = false;
         loop {
-            let frist_res = self.near_target_arc(frist_k, arc, frist);
+            let frist_res = self.near_target_state(frist_k, state);
             let position = self.reader.get_position();
 
             match frist_res {
                 Err(e) => match e {
                     FstError::Greater => {
-                        frist = true;
+                        greater = true;
                     }
                     _ => {
                         return Err(FstError::NotFound);
@@ -86,26 +87,26 @@ impl Decoder {
                 },
                 Ok(()) => {}
             }
-            out += arc.out;
-            if frist {
+            out += state.out;
+            if greater {
                 loop {
-                    if arc.is_final {
+                    if state.is_final {
                         break;
                     }
-                    self.read_first_arc(arc)?;
-                    out += arc.out;
+                    self.read_first_state(state)?;
+                    out += state.out;
                 }
-                out += arc.final_out;
+                out += state.final_out;
             } else {
-                let res = self.near_next(&key[1..], arc);
+                let res = self.near_next(&key[1..], state);
                 match res {
                     Ok(_out) => {
                         out += _out;
                     }
                     Err(e) => {
-                        if !arc.is_last {
+                        if !state.is_last {
                             self.reader.set_position(position);
-                            arc.reset();
+                            state.reset();
                             continue;
                         }
                         return Err(FstError::NotFound);
@@ -118,83 +119,82 @@ impl Decoder {
         Ok(out)
     }
 
-    fn near_target_arc(&mut self, _in: u8, arc: &mut Arc, frist: bool) -> FstResult<()> {
-        self.read_first_arc(arc)?;
-
-        if frist {
-            return Ok(());
-        }
-
+    fn near_target_state(&mut self, _in: u8, state: &mut State) -> FstResult<()> {
+        self.read_first_state(state)?;
         loop {
-            if arc._in == _in {
+            if state._in == _in {
                 return Ok(());
-            } else if arc._in > _in {
+            } else if state._in > _in {
                 return Err(FstError::Greater);
-            } else if arc.is_last {
+            } else if state.is_last {
                 return Err(FstError::NotFound);
             } else {
-                self.read_next_arc(arc)?;
+                self.read_next_state(state)?;
             }
         }
     }
 
     pub fn find(&mut self, key: &[u8]) -> FstResult<u64> {
-        let mut arc = Arc::new(0, 0);
+        let mut state = State::new(0, 0);
         let mut out: u64 = 0;
         for _k in key.iter() {
-            self.find_target_arc(*_k, &mut arc)?;
-            out += arc.out;
+            self.find_target_state(*_k, &mut state)?;
+
+            out += state.out;
         }
-        out += arc.final_out;
+        if !state.is_final {
+            return Err(FstError::NotFound);
+        }
+        out += state.final_out;
         Ok(out)
     }
 
-    fn find_target_arc(&mut self, _in: u8, arc: &mut Arc) -> FstResult<()> {
-        self.read_first_arc(arc)?;
+    fn find_target_state(&mut self, _in: u8, state: &mut State) -> FstResult<()> {
+        self.read_first_state(state)?;
         loop {
-            if arc._in == _in {
+            if state._in == _in {
                 return Ok(());
-            } else if arc.is_last {
+            } else if state.is_last {
                 return Err(FstError::NotFound);
             } else {
-                self.read_next_arc(arc)?;
+                self.read_next_state(state)?;
             }
         }
     }
 
-    fn read_first_arc(&mut self, arc: &mut Arc) -> FstResult<()> {
-        if arc.target > 0 {
-            self.reader.set_position(arc.target as i32);
+    fn read_first_state(&mut self, state: &mut State) -> FstResult<()> {
+        if state.target > 0 {
+            self.reader.set_position(state.target as i32);
         }
-        self.read_next_arc(arc)
+        self.read_next_state(state)
     }
 
-    fn read_next_arc(&mut self, arc: &mut Arc) -> FstResult<()> {
-        arc.reset();
-        arc.flag = self.read_byte()?;
-        arc._in = self.read_byte()?;
-        if arc.flag(BIT_ARC_HAS_FINAL_OUTPUT) {
+    fn read_next_state(&mut self, state: &mut State) -> FstResult<()> {
+        state.reset();
+        state.flag = self.read_byte()?;
+        state._in = self.read_byte()?;
+        if state.flag(BIT_STATE_HAS_FINAL_OUTPUT) {
             let (v, _) = self.read_v_u64()?;
-            arc.final_out = v;
+            state.final_out = v;
         }
 
-        if arc.flag(BIT_ARC_HAS_OUPPUT) {
+        if state.flag(BIT_STATE_HAS_OUPPUT) {
             let (v, _) = self.read_v_u64()?;
-            arc.out = v;
+            state.out = v;
         }
-        if arc.flag(BIT_STOP_NODE) {
-            arc.is_stop = true;
+        if state.flag(BIT_STOP_NODE) {
+            state.is_stop = true;
         } else {
-            if !arc.flag(BIT_TAGET_NEXT) {
+            if !state.flag(BIT_TAGET_NEXT) {
                 let (v, _) = self.read_v_u64()?;
-                arc.target = v;
+                state.target = v;
             }
         }
-        if arc.flag(BIT_LAST_ARC) {
-            arc.is_last = true;
+        if state.flag(BIT_LAST_STATE) {
+            state.is_last = true;
         }
-        if arc.flag(BIT_FINAL_ARC) {
-            arc.is_final = true;
+        if state.flag(BIT_FINAL_STATE) {
+            state.is_final = true;
         }
 
         Ok(())
@@ -231,11 +231,5 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_encoder() {
-        let v = vec![];
-        let mut wtr = Encoder::new(v);
-        wtr.write_v64(45).unwrap();
-        wtr.write_v64(466987741).unwrap();
-        let mut dtr = Decoder::new(wtr.get_ref().to_vec());
-    }
+    fn test_encoder() {}
 }

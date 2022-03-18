@@ -1,232 +1,16 @@
-use crate::decoder::Decoder;
 use crate::encoder::Encoder;
 use crate::error::FstResult;
+use crate::state::UnCompiledNode;
+use crate::state::UnCompiledNodes;
 use std::io::Write;
 
-struct UnCompiledNodes {
-    stack: Vec<UnCompiledNode>,
-}
-
-impl UnCompiledNodes {
-    fn new() -> UnCompiledNodes {
-        let stack: Vec<UnCompiledNode> = Vec::with_capacity(64);
-        Self { stack: stack }
-    }
-
-    fn find_common_prefix(&mut self, key: &[u8], mut out: u64) -> (usize, u64) {
-        let mut i: usize = 0;
-        while i < key.len() {
-            if i >= self.stack.len() {
-                break;
-            }
-            let mut add_prefix: u64 = 0;
-            if self.stack[i].last_in() == key[i] {
-                let common_pre = Self::output_prefix(self.stack[i].last_out(), out);
-                add_prefix = Self::output_sub(self.stack[i].last_out(), common_pre);
-                out = Self::output_sub(out, common_pre);
-                self.stack[i].set_last_out(common_pre);
-                i += 1;
-            } else {
-                break;
-            }
-            if add_prefix > 0 {
-                let final_out = self.stack[i].add_output_prefix(add_prefix);
-                self.stack[i - 1].set_final_out(final_out);
-            }
-        }
-        (i, out)
-    }
-
-    fn push_empty(&mut self, _final: bool) {
-        self.stack.push(UnCompiledNode::new(_final));
-    }
-
-    fn pop_empty(&mut self) {
-        self.stack.pop();
-    }
-
-    fn pop_root(&mut self) -> Option<UnCompiledNode> {
-        self.stack.pop()
-    }
-
-    fn pop_freeze(&mut self) -> Option<UnCompiledNode> {
-        self.stack.pop()
-    }
-
-    fn top_last_freeze(&mut self, addr: u64) {
-        if let Some(n) = self.stack.last_mut() {
-            n.last_compiled(addr);
-        }
-    }
-
-    fn add_prefix(&mut self, key: &[u8]) {}
-
-    fn add_suffix(&mut self, key: &[u8], out: u64) {
-        if key.len() == 0 {
-            return;
-        }
-        let last = self.stack.len() - 1;
-        self.stack[last].push_arc(Arc::new(key[0], out));
-        for (i, v) in key[1..].iter().enumerate() {
-            let mut next = UnCompiledNode::new(false);
-            let mut arc = Arc::new(*v, 0);
-            next.push_arc(arc);
-            self.stack.push(next);
-        }
-        if let Some(s) = self.stack.last_mut() {
-            if let Some(s1) = s.arcs.last_mut() {
-                s1.is_final = true;
-            }
-        }
-
-        self.push_empty(true);
-    }
-
-    fn output_prefix(l: u64, r: u64) -> u64 {
-        if l < r {
-            return l;
-        }
-        r
-    }
-
-    fn output_sub(l: u64, r: u64) -> u64 {
-        l - r
-    }
-}
-
-pub struct UnCompiledNode {
-    pub arcs: Vec<Arc>,
-    pub is_final: bool,
-    pub final_output: u64,
-}
-
-impl UnCompiledNode {
-    fn new(_final: bool) -> UnCompiledNode {
-        Self {
-            arcs: Vec::new(),
-            is_final: _final,
-            final_output: 0,
-        }
-    }
-
-    fn add_output_prefix(&mut self, prefix_len: u64) -> u64 {
-        let mut final_out: u64 = 0;
-        if self.is_final {
-            final_out = Self::output_cat(prefix_len, self.final_output);
-        }
-        if self.arcs.len() == 0 {
-            return final_out;
-        }
-        for i in 0..self.arcs.len() - 1 {
-            let arc = &mut self.arcs[i];
-            arc.out = Self::output_cat(prefix_len, arc.out);
-        }
-        let arc = self.arcs.last_mut().expect("get last arc fail"); //&mut self.arcs[self.num_arc - 1];
-        arc.out = Self::output_cat(prefix_len, arc.out);
-        return final_out;
-    }
-
-    fn last_compiled(&mut self, addr: u64) {
-        if let Some(a) = self.arcs.last_mut() {
-            a.target = addr;
-        }
-    }
-
-    fn push_arc(&mut self, arc: Arc) {
-        self.arcs.push(arc);
-    }
-
-    fn last_in(&self) -> u8 {
-        if let Some(a) = self.arcs.last() {
-            return a._in;
-        }
-        0
-    }
-
-    fn last_out(&self) -> u64 {
-        if let Some(a) = self.arcs.last() {
-            return a.out;
-        }
-        0
-    }
-
-    fn set_last_out(&mut self, out: u64) {
-        if let Some(a) = self.arcs.last_mut() {
-            a.out = out
-        }
-    }
-
-    fn set_final_out(&mut self, final_output: u64) {
-        if let Some(a) = self.arcs.last_mut() {
-            a.final_out = final_output;
-        }
-    }
-
-    fn set_in_out(&mut self, _in: u8, out: u64) {
-        if self.arcs.len() == 0 {
-            self.push_arc(Arc::new(_in, out));
-            return;
-        }
-        if let Some(a) = self.arcs.last_mut() {
-            a._in = _in;
-            a.out = out;
-        }
-    }
-
-    fn output_cat(l: u64, r: u64) -> u64 {
-        l + r
-    }
-}
-
-pub struct Arc {
-    pub _in: u8,
-    pub out: u64,
-
-    pub final_out: u64,
-    pub target: u64,
-    pub is_last: bool,
-    pub flag: u8,
-    pub is_stop: bool,
-    pub is_final: bool,
-}
-
-impl Arc {
-    pub fn new(_in: u8, out: u64) -> Arc {
-        Self {
-            _in: _in,
-            out: out,
-            final_out: 0,
-            target: 0,
-            is_last: false,
-            flag: 0,
-            is_stop: false,
-            is_final: false,
-        }
-    }
-
-    pub fn flag(&self, f: u8) -> bool {
-        return (self.flag & f) != 0;
-    }
-
-    pub fn reset(&mut self) {
-        self._in = 0;
-        self.out = 0;
-        self.final_out = 0;
-        self.target = 0;
-        self.is_last = false;
-        self.flag = 0;
-        self.is_stop = false;
-        self.is_final = false;
-    }
-}
-
-struct Builder<W: Write> {
+pub struct Builder<W: Write> {
     unfinished: UnCompiledNodes,
     encoder: Encoder<W>,
 }
 
 impl<W: Write> Builder<W> {
-    fn new(w: W) -> Builder<W> {
+    pub fn new(w: W) -> Builder<W> {
         let mut unfinished = UnCompiledNodes::new();
         unfinished.push_empty(false);
         Self {
@@ -235,7 +19,7 @@ impl<W: Write> Builder<W> {
         }
     }
 
-    fn add(&mut self, key: &[u8], val: u64) -> FstResult<()> {
+    pub fn add(&mut self, key: &[u8], val: u64) -> FstResult<()> {
         let (prefix_len, out) = self.unfinished.find_common_prefix(key, val);
         self.freeze_tail(prefix_len)?;
         self.unfinished.add_suffix(&key[prefix_len..], out);
@@ -273,12 +57,16 @@ impl<W: Write> Builder<W> {
         }
         Ok(())
     }
+
+    pub fn bytes(&self) -> &W {
+        self.encoder.get_ref()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::decoder::Decoder;
     #[test]
     fn test_add() {
         let mut b = Builder::new(vec![]);
@@ -293,8 +81,8 @@ mod tests {
 
         println!("{:?}", b.encoder.get_ref());
 
-        let mut d = Decoder::new(b.encoder.get_ref().to_vec());
-        let v = d.find("dog".as_bytes());
+        let mut d = Decoder::new(b.encoder.get_ref());
+        let v = d.find("l".as_bytes());
         match v {
             Ok(vv) => {
                 println!("v:{}", vv);
