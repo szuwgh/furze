@@ -7,7 +7,7 @@ import (
 
 /*
 #cgo CFLAGS: -I.
-#cgo LDFLAGS: -L../lib -lfurze
+#cgo LDFLAGS: -L../target/debug -lfurze
 #include "ffi.h"
 */
 import "C"
