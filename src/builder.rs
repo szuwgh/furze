@@ -50,7 +50,7 @@ impl<W: Write> Builder<W> {
         Ok(addr as i64)
     }
 
-    fn finish(&mut self) -> FstResult<()> {
+    pub fn finish(&mut self) -> FstResult<()> {
         self.freeze_tail(0)?;
         if let Some(node) = self.unfinished.pop_root() {
             self.encoder.add_node(node)?;
@@ -82,7 +82,7 @@ mod tests {
         println!("{:?}", b.encoder.get_ref());
 
         let mut d = Decoder::new(b.encoder.get_ref());
-        let v = d.find("l".as_bytes());
+        let v = d.find("logs".as_bytes());
         match v {
             Ok(vv) => {
                 println!("v:{}", vv);

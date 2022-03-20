@@ -19,6 +19,15 @@ pub unsafe extern "C" fn add_key(arg: *mut c_void, key: *const u8, len: u32, val
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn finish(arg: *mut c_void) -> i32 {
+    let b: &mut Builder<Vec<u8>> = &mut *(arg as *mut Builder<Vec<u8>>);
+    match b.finish() {
+        Ok(()) => 0,
+        _ => -1,
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn bytes(arg: *mut c_void, len: *mut u32, cap: *mut u32) -> *const u8 {
     let b: &mut Builder<Vec<u8>> = &mut *(arg as *mut Builder<Vec<u8>>);
     let data = b.bytes();
@@ -43,10 +52,11 @@ pub unsafe extern "C" fn get(arg: *mut c_void, key: *const u8, len: u32) -> i64 
     }
 }
 
-pub unsafe extern "C" fn near(arg: *mut c_void, key: *const u8, len: u32) -> i64 {
+#[no_mangle]
+pub unsafe extern "C" fn get_first_key(arg: *mut c_void, key: *const u8, len: u32) -> i64 {
     let fst: &mut FST = &mut *(arg as *mut FST);
     let k = slice::from_raw_parts(key, len as usize);
-    match fst.near(k) {
+    match fst.get_first_key(k) {
         Ok(val) => val as i64,
         _ => -1,
     }

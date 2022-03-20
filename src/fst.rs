@@ -20,7 +20,7 @@ impl FST {
         decoder.find(key)
     }
 
-    pub fn near(&self, key: &[u8]) -> FstResult<u64> {
+    pub fn get_first_key(&self, key: &[u8]) -> FstResult<u64> {
         let mut decoder = Decoder::new(&self.data);
         decoder.near(key)
     }
@@ -30,5 +30,20 @@ impl FST {
 mod tests {
     use super::*;
     #[test]
-    fn test_add_to_fst() {}
+    fn test_add_to_fst() {
+        let mut builder = FST::build();
+        builder.add("aa".as_bytes(), 1).unwrap();
+        builder.add("bb".as_bytes(), 2).unwrap();
+        builder.add("cc".as_bytes(), 7).unwrap();
+        builder.add("zz".as_bytes(), 9).unwrap();
+        builder.finish().unwrap();
+
+        let fst = FST::load(builder.bytes().to_vec());
+
+        let res = fst.get("cc".as_bytes());
+        match res {
+            Ok(v) => println!("res:{}", v),
+            Err(e) => println!("e:{}", e),
+        }
+    }
 }
