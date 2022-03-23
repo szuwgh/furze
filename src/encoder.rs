@@ -1,3 +1,4 @@
+use crate::bytes::Clear;
 use crate::error::{FstError, FstResult};
 use crate::state::UnCompiledNode;
 use crate::state::{
@@ -10,13 +11,19 @@ const MSB: u8 = 0b1000_0000;
 
 const NO_OUTPUT: u64 = 0;
 
-pub struct Encoder<W: Write> {
+pub struct Encoder<W>
+where
+    W: Write + Clear,
+{
     writer: W,
     last_forzen_node: u64,
     position: u64,
 }
 
-impl<W: Write> Encoder<W> {
+impl<W> Encoder<W>
+where
+    W: Write + Clear,
+{
     pub fn new(w: W) -> Encoder<W> {
         Self {
             writer: w,
@@ -94,6 +101,10 @@ impl<W: Write> Encoder<W> {
 
     pub fn get_ref(&self) -> &W {
         &self.writer
+    }
+
+    pub fn reset(&mut self) {
+        self.writer.reset()
     }
 }
 

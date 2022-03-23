@@ -1,4 +1,5 @@
 use crate::builder::Builder;
+use crate::bytes::Bytes;
 use crate::decoder::Decoder;
 use crate::error::FstResult;
 
@@ -8,7 +9,7 @@ pub struct FST {
 
 impl FST {
     pub fn build() -> Builder<Vec<u8>> {
-        Builder::new(vec![])
+        Builder::new(Bytes::new())
     }
 
     pub fn load(data: Vec<u8>) -> FST {
@@ -37,7 +38,6 @@ mod tests {
         builder.add("cc".as_bytes(), 7).unwrap();
         builder.add("zz".as_bytes(), 9).unwrap();
         builder.finish().unwrap();
-
         let fst = FST::load(builder.bytes().to_vec());
 
         let res = fst.get("cc".as_bytes());

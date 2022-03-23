@@ -1,4 +1,5 @@
 use crate::builder::Builder;
+use crate::bytes::Bytes;
 use crate::fst::FST;
 use std::os::raw::c_void;
 use std::slice;
@@ -10,7 +11,7 @@ pub extern "C" fn new_fst_builder() -> *mut c_void {
 
 #[no_mangle]
 pub unsafe extern "C" fn add_key(arg: *mut c_void, key: *const u8, len: u32, value: u64) -> i32 {
-    let b: &mut Builder<Vec<u8>> = &mut *(arg as *mut Builder<Vec<u8>>);
+    let b: &mut Builder<Bytes> = &mut *(arg as *mut Builder<Bytes>);
     let k = slice::from_raw_parts(key, len as usize);
     match b.add(k, value) {
         Ok(()) => 0,
@@ -20,7 +21,7 @@ pub unsafe extern "C" fn add_key(arg: *mut c_void, key: *const u8, len: u32, val
 
 #[no_mangle]
 pub unsafe extern "C" fn finish(arg: *mut c_void) -> i32 {
-    let b: &mut Builder<Vec<u8>> = &mut *(arg as *mut Builder<Vec<u8>>);
+    let b: &mut Builder<Bytes> = &mut *(arg as *mut Builder<Bytes>);
     match b.finish() {
         Ok(()) => 0,
         _ => -1,
@@ -29,7 +30,7 @@ pub unsafe extern "C" fn finish(arg: *mut c_void) -> i32 {
 
 #[no_mangle]
 pub unsafe extern "C" fn bytes(arg: *mut c_void, len: *mut u32, cap: *mut u32) -> *const u8 {
-    let b: &mut Builder<Vec<u8>> = &mut *(arg as *mut Builder<Vec<u8>>);
+    let b: &mut Builder<Bytes> = &mut *(arg as *mut Builder<Bytes>);
     let data = b.bytes();
     *len = data.len() as u32;
     *cap = data.capacity() as u32;
