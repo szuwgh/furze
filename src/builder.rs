@@ -70,7 +70,9 @@ where
     }
 
     pub fn reset(&mut self) {
-        self.encoder.reset()
+        self.unfinished.reset();
+        self.unfinished.push_empty(false);
+        self.encoder.reset();
     }
 }
 

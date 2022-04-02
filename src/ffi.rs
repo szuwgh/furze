@@ -38,6 +38,12 @@ pub unsafe extern "C" fn bytes(arg: *mut c_void, len: *mut u32, cap: *mut u32) -
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn reset(arg: *mut c_void, len: *mut u32, cap: *mut u32) {
+    let b: &mut Builder<Bytes> = &mut *(arg as *mut Builder<Bytes>);
+    b.bytes();
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn load(key: *mut u8, len: u32, cap: u32) -> *mut c_void {
     let k: Vec<u8> = Vec::from_raw_parts(key, len as usize, cap as usize);
     Box::into_raw(Box::new(FST::load(k))) as *mut c_void

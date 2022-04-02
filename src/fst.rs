@@ -21,6 +21,11 @@ impl FST {
         decoder.find(key)
     }
 
+    pub fn near(&self, key: &[u8]) -> FstResult<u64> {
+        let mut decoder = Decoder::new(&self.data);
+        decoder.near(key)
+    }
+
     pub fn get_first_key(&self, key: &[u8]) -> FstResult<u64> {
         let mut decoder = Decoder::new(&self.data);
         decoder.near(key)
@@ -39,10 +44,28 @@ mod tests {
         builder.add("zz".as_bytes(), 9).unwrap();
         builder.finish().unwrap();
         let fst = FST::load(builder.bytes().to_vec());
-
         let res = fst.get("cc".as_bytes());
         match res {
-            Ok(v) => println!("res:{}", v),
+            Ok(v) => println!("cc res:{}", v),
+            Err(e) => println!("e:{}", e),
+        }
+
+        builder.reset();
+        builder.add("11".as_bytes(), 1).unwrap();
+        builder.add("22".as_bytes(), 2).unwrap();
+        builder.add("33".as_bytes(), 7).unwrap();
+        builder.add("44".as_bytes(), 9).unwrap();
+        builder.finish().unwrap();
+        let fst = FST::load(builder.bytes().to_vec());
+        let res = fst.get("cc".as_bytes());
+        match res {
+            Ok(v) => println!("cc res:{}", v),
+            Err(e) => println!("e:{}", e),
+        }
+
+        let res1 = fst.get("33".as_bytes());
+        match res1 {
+            Ok(v) => println!("33 res:{}", v),
             Err(e) => println!("e:{}", e),
         }
     }

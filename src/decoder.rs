@@ -75,7 +75,6 @@ impl<'a> Decoder<'a> {
         loop {
             let frist_res = self.near_target_state(frist_k, state);
             let position = self.reader.get_position();
-
             match frist_res {
                 Err(e) => match e {
                     FstError::Greater => {

@@ -104,7 +104,9 @@ where
     }
 
     pub fn reset(&mut self) {
-        self.writer.reset()
+        self.writer.reset();
+        self.last_forzen_node = 0;
+        self.position = 0;
     }
 }
 
