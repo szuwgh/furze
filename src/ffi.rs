@@ -38,7 +38,7 @@ pub unsafe extern "C" fn bytes(arg: *mut c_void, len: *mut u32, cap: *mut u32) -
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn reset(arg: *mut c_void, len: *mut u32, cap: *mut u32) {
+pub unsafe extern "C" fn reset(arg: *mut c_void) {
     let b: &mut Builder<Bytes> = &mut *(arg as *mut Builder<Bytes>);
     b.bytes();
 }
@@ -60,10 +60,10 @@ pub unsafe extern "C" fn get(arg: *mut c_void, key: *const u8, len: u32) -> i64 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_first_key(arg: *mut c_void, key: *const u8, len: u32) -> i64 {
+pub unsafe extern "C" fn near(arg: *mut c_void, key: *const u8, len: u32) -> i64 {
     let fst: &mut FST = &mut *(arg as *mut FST);
     let k = slice::from_raw_parts(key, len as usize);
-    match fst.get_first_key(k) {
+    match fst.near(k) {
         Ok(val) => val as i64,
         _ => -1,
     }

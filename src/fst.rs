@@ -25,11 +25,6 @@ impl FST {
         let mut decoder = Decoder::new(&self.data);
         decoder.near(key)
     }
-
-    pub fn get_first_key(&self, key: &[u8]) -> FstResult<u64> {
-        let mut decoder = Decoder::new(&self.data);
-        decoder.near(key)
-    }
 }
 
 #[cfg(test)]
