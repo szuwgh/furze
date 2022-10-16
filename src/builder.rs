@@ -1,15 +1,22 @@
+use crate::bytes::Clear;
 use crate::encoder::Encoder;
 use crate::error::FstResult;
 use crate::state::UnCompiledNode;
 use crate::state::UnCompiledNodes;
 use std::io::Write;
 
-pub struct Builder<W: Write> {
+pub struct Builder<W>
+where
+    W: Write + Clear,
+{
     unfinished: UnCompiledNodes,
     encoder: Encoder<W>,
 }
 
-impl<W: Write> Builder<W> {
+impl<W> Builder<W>
+where
+    W: Write + Clear,
+{
     pub fn new(w: W) -> Builder<W> {
         let mut unfinished = UnCompiledNodes::new();
         unfinished.push_empty(false);
@@ -70,15 +77,22 @@ impl<W: Write> Builder<W> {
     pub fn bytes(&self) -> &W {
         self.encoder.get_ref()
     }
+
+    pub fn reset(&mut self) {
+        self.unfinished.reset();
+        self.unfinished.push_empty(false);
+        self.encoder.reset();
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bytes::Bytes;
     use crate::decoder::Decoder;
     #[test]
     fn test_add() {
-        let mut b = Builder::new(vec![]);
+        let mut b = Builder::new(Bytes::new());
         b.add("cat".as_bytes(), 5);
         b.add("dog".as_bytes(), 10);
         b.add("deep".as_bytes(), 15);
@@ -95,5 +109,7 @@ mod tests {
                 println!("e:{:?}", e);
             }
         }
+
+        b.reset()
     }
 }

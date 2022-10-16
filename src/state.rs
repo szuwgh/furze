@@ -16,7 +16,12 @@ impl UnCompiledNodes {
     }
 
     //计算当前字符串和上一个字符串的公共前缀
-    pub(crate) fn find_common_prefix(&mut self, key: &[u8], mut out: u64) -> (usize, u64) {
+    pub fn reset(&mut self) {
+        //后期引入对象池
+        self.stack.clear()
+    }
+
+    pub fn find_common_prefix(&mut self, key: &[u8], mut out: u64) -> (usize, u64) {
         let mut i: usize = 0;
         while i < key.len() {
             if i >= self.stack.len() {

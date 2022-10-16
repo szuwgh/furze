@@ -32,6 +32,11 @@ func (b *Builder) Finish() error {
 	return nil
 }
 
+func (b *Builder) reset() error {
+	 C.reset(b.fstBuilder)
+}
+
+
 func (b *Builder) Bytes() []byte {
 	var length, capacity uint32
 	bytes := C.bytes(b.fstBuilder, (*C.uint)(unsafe.Pointer(&length)), (*C.uint)(unsafe.Pointer(&capacity)))
@@ -61,7 +66,7 @@ func (f *FST) Get(k []byte) (uint64, error) {
 	return uint64(res), nil
 }
 
-func (f *FST) Get_First_Key(k []byte) (uint64, error) {
+func (f *FST) Near(k []byte) (uint64, error) {
 	res := C.get_first_key(f.rsFST, (*C.uchar)(unsafe.Pointer(&k[0])), C.uint(len(k)))
 	if res == -1 {
 		return 0, nil

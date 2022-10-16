@@ -17,3 +17,5 @@ Cargo.lock
 example/simple/target
 
 .vscode/
+
+pkg/

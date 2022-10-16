@@ -1,3 +1,4 @@
+use crate::bytes::Clear;
 use crate::error::{FstError, FstResult};
 use crate::state::UnCompiledNode;
 use crate::state::{
@@ -12,14 +13,20 @@ const FIXED_ARRAY_NUM_STATE_DEEP: usize = 10;
 
 const NO_OUTPUT: u64 = 0;
 
-pub(crate) struct Encoder<W: Write> {
+pub struct Encoder<W>
+where
+    W: Write + Clear,
+{
     writer: W,
     last_forzen_node: u64,
     position: u64,
 }
 
-impl<W: Write> Encoder<W> {
-    pub(crate) fn new(w: W) -> Encoder<W> {
+impl<W> Encoder<W>
+where
+    W: Write + Clear,
+{
+    pub fn new(w: W) -> Encoder<W> {
         Self {
             writer: w,
             last_forzen_node: 0,
@@ -98,6 +105,12 @@ impl<W: Write> Encoder<W> {
 
     pub fn get_ref(&self) -> &W {
         &self.writer
+    }
+
+    pub fn reset(&mut self) {
+        self.writer.reset();
+        self.last_forzen_node = 0;
+        self.position = 0;
     }
 }
 

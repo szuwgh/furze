@@ -1,4 +1,5 @@
 use crate::builder::Builder;
+use crate::bytes::Bytes;
 use crate::decoder::Decoder;
 use crate::error::FstResult;
 
@@ -8,7 +9,7 @@ pub struct FST {
 
 impl FST {
     pub fn build() -> Builder<Vec<u8>> {
-        Builder::new(vec![])
+        Builder::new(Bytes::new())
     }
 
     pub fn load(data: Vec<u8>) -> FST {
@@ -20,7 +21,7 @@ impl FST {
         decoder.find(key)
     }
 
-    pub fn get_first_key(&self, key: &[u8]) -> FstResult<u64> {
+    pub fn near(&self, key: &[u8]) -> FstResult<u64> {
         let mut decoder = Decoder::new(&self.data);
         decoder.near(key)
     }
@@ -37,12 +38,29 @@ mod tests {
         builder.add("cc".as_bytes(), 7).unwrap();
         builder.add("zz".as_bytes(), 9).unwrap();
         builder.finish().unwrap();
-
         let fst = FST::load(builder.bytes().to_vec());
-
         let res = fst.find("cc".as_bytes());
         match res {
-            Ok(v) => println!("res:{}", v),
+            Ok(v) => println!("cc res:{}", v),
+            Err(e) => println!("e:{}", e),
+        }
+
+        builder.reset();
+        builder.add("11".as_bytes(), 1).unwrap();
+        builder.add("22".as_bytes(), 2).unwrap();
+        builder.add("33".as_bytes(), 7).unwrap();
+        builder.add("44".as_bytes(), 9).unwrap();
+        builder.finish().unwrap();
+        let fst = FST::load(builder.bytes().to_vec());
+        let res = fst.find("cc".as_bytes());
+        match res {
+            Ok(v) => println!("cc res:{}", v),
+            Err(e) => println!("e:{}", e),
+        }
+
+        let res1 = fst.find("33".as_bytes());
+        match res1 {
+            Ok(v) => println!("33 res:{}", v),
             Err(e) => println!("e:{}", e),
         }
     }
