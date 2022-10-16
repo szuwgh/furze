@@ -27,3 +27,7 @@ fn main() {
 }
 
 ```
+terminal:
+```
+out:2
+```
