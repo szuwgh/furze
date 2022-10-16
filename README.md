@@ -1,8 +1,8 @@
 # furze
 
-finite state transducers (fst) writen in rust, refer to the Lucene fst implementation.Finite StateTransducers is currently widely used in speech recognition and natural language search, processing and other directions
+finite state transducers (fst) writen in rust, refer to the Lucene fst implementation. The FST stores all terms in bytes and reuses the prefix and suffix of term Index to make it small enough to fit into memory, reducing storage space, commonly used in search engines, speech recognition and natural language search.
 
-代码示例
+Example:
 ```rust
 use furze::Builder;
 use furze::FST;
