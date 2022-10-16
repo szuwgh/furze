@@ -8,16 +8,18 @@ use std::io::Write;
 
 const MSB: u8 = 0b1000_0000;
 
+const FIXED_ARRAY_NUM_STATE_DEEP: usize = 10;
+
 const NO_OUTPUT: u64 = 0;
 
-pub struct Encoder<W: Write> {
+pub(crate) struct Encoder<W: Write> {
     writer: W,
     last_forzen_node: u64,
     position: u64,
 }
 
 impl<W: Write> Encoder<W> {
-    pub fn new(w: W) -> Encoder<W> {
+    pub(crate) fn new(w: W) -> Encoder<W> {
         Self {
             writer: w,
             last_forzen_node: 0,
@@ -25,7 +27,9 @@ impl<W: Write> Encoder<W> {
         }
     }
 
-    pub fn add_node(&mut self, node: UnCompiledNode) -> FstResult<u64> {
+    pub(crate) fn add_node(&mut self, node: UnCompiledNode) -> FstResult<u64> {
+        //  if node.states.len()
+
         for (_i, _s) in node.states.iter().rev().enumerate() {
             let mut flag: u8 = 0;
             if _i == 0 {
@@ -58,7 +62,7 @@ impl<W: Write> Encoder<W> {
         Ok(self.last_forzen_node)
     }
 
-    pub fn write_v64(&mut self, out: u64) -> FstResult<u64> {
+    pub(crate) fn write_v64(&mut self, out: u64) -> FstResult<u64> {
         let mut buffer: [u8; 10] = [0; 10];
         let mut n = out;
         let mut i = 0;

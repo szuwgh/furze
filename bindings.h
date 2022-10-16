@@ -27,6 +27,6 @@ const uint8_t *bytes(void *arg, uint32_t *len, uint32_t *cap);
 
 void *load(uint8_t *key, uint32_t len, uint32_t cap);
 
-int64_t get(void *arg, const uint8_t *key, uint32_t len);
+int64_t find(void *arg, const uint8_t *key, uint32_t len);
 
 int64_t get_first_key(void *arg, const uint8_t *key, uint32_t len);

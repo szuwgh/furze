@@ -139,7 +139,6 @@ impl<'a> Decoder<'a> {
         let mut out: u64 = 0;
         for _k in key.iter() {
             self.find_target_state(*_k, &mut state)?;
-
             out += state.out;
         }
         if !state.is_final {

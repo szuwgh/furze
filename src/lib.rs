@@ -1,7 +1,11 @@
-mod builder;
+pub mod builder;
 mod decoder;
 mod encoder;
-mod error;
-mod fst;
-mod state;
+pub mod error;
 mod ffi;
+pub mod fst;
+mod state;
+
+pub use builder::Builder;
+
+pub use fst::FST;

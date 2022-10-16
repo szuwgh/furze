@@ -12,9 +12,9 @@ pub enum FstError {
     NotFound,
     #[error("Greater")]
     Greater,
-    #[error("encode fal from :{0}")]
+    #[error("encode fail from :{0}")]
     EncodeFail(String),
-    #[error("encode fal from :{0}")]
+    #[error("io write fail from :{0}")]
     IoWriteFail(io::Error),
 }
 
