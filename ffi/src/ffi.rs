@@ -50,10 +50,10 @@ pub unsafe extern "C" fn load(key: *mut u8, len: u32, cap: u32) -> *mut c_void {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get(arg: *mut c_void, key: *const u8, len: u32) -> i64 {
+pub unsafe extern "C" fn find(arg: *mut c_void, key: *const u8, len: u32) -> i64 {
     let fst: &mut FST = &mut *(arg as *mut FST);
     let k = slice::from_raw_parts(key, len as usize);
-    match fst.get(k) {
+    match fst.find(k) {
         Ok(val) => val as i64,
         _ => -1,
     }

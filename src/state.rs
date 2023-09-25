@@ -5,7 +5,7 @@ pub const BIT_STOP_NODE: u8 = 1 << 3;
 pub const BIT_STATE_HAS_OUPPUT: u8 = 1 << 4;
 pub const BIT_STATE_HAS_FINAL_OUTPUT: u8 = 1 << 5;
 pub const BIT_TARGET_DELTA: u8 = 1 << 6;
-pub struct UnCompiledNodes {
+pub(crate) struct UnCompiledNodes {
     pub stack: Vec<UnCompiledNode>,
 }
 
@@ -15,6 +15,7 @@ impl UnCompiledNodes {
         Self { stack: stack }
     }
 
+    //计算当前字符串和上一个字符串的公共前缀
     pub fn reset(&mut self) {
         //后期引入对象池
         self.stack.clear()
@@ -28,14 +29,20 @@ impl UnCompiledNodes {
             }
             let mut add_prefix: u64 = 0;
             if self.stack[i].last_in() == key[i] {
+                //查找最小值 上一个输入是10 下一个输入是15 则公共输出前缀是 10
+                //如果下一个输入是2 则公共输出前缀是 2
                 let common_pre = Self::output_prefix(self.stack[i].last_out(), out);
+                //输出add_prefix 共有前缀 例如 common_pre是10 上一个输入是10
+                //上一个输入是15 则add_prefix = 13
                 add_prefix = Self::output_sub(self.stack[i].last_out(), common_pre);
+                //out = 15 common_pre=10 out=5
                 out = Self::output_sub(out, common_pre);
                 self.stack[i].set_last_out(common_pre);
                 i += 1;
             } else {
                 break;
             }
+            //如果下一个输入 out 比 上一个 要小 则会有 final_out
             if add_prefix > 0 {
                 let final_out = self.stack[i].add_output_prefix(add_prefix);
                 self.stack[i - 1].set_final_out(final_out);
@@ -44,23 +51,23 @@ impl UnCompiledNodes {
         (i, out)
     }
 
-    pub fn push_empty(&mut self, _final: bool) {
+    pub(crate) fn push_empty(&mut self, _final: bool) {
         self.stack.push(UnCompiledNode::new(_final));
     }
 
-    pub fn pop_empty(&mut self) {
+    pub(crate) fn pop_empty(&mut self) {
         self.stack.pop();
     }
 
-    pub fn pop_root(&mut self) -> Option<UnCompiledNode> {
+    pub(crate) fn pop_root(&mut self) -> Option<UnCompiledNode> {
         self.stack.pop()
     }
 
-    pub fn pop_freeze(&mut self) -> Option<UnCompiledNode> {
+    pub(crate) fn pop_freeze(&mut self) -> Option<UnCompiledNode> {
         self.stack.pop()
     }
 
-    pub fn top_last_freeze(&mut self, addr: u64) {
+    pub(crate) fn top_last_freeze(&mut self, addr: u64) {
         if let Some(n) = self.stack.last_mut() {
             n.last_compiled(addr);
         }
@@ -68,7 +75,7 @@ impl UnCompiledNodes {
 
     fn add_prefix(&mut self, key: &[u8]) {}
 
-    pub fn add_suffix(&mut self, key: &[u8], out: u64) {
+    pub(crate) fn add_suffix(&mut self, key: &[u8], out: u64) {
         if key.len() == 0 {
             return;
         }
@@ -76,12 +83,12 @@ impl UnCompiledNodes {
         self.stack[last].push_state(State::new(key[0], out));
         for (i, v) in key[1..].iter().enumerate() {
             let mut next = UnCompiledNode::new(false);
-            let mut state = State::new(*v, 0);
+            let state = State::new(*v, 0);
             next.push_state(state);
             self.stack.push(next);
         }
-        if let Some(s) = self.stack.last_mut() {
-            if let Some(s1) = s.states.last_mut() {
+        if let Some(n) = self.stack.last_mut() {
+            if let Some(s1) = n.states.last_mut() {
                 s1.is_final = true;
             }
         }
@@ -90,10 +97,7 @@ impl UnCompiledNodes {
     }
 
     fn output_prefix(l: u64, r: u64) -> u64 {
-        if l < r {
-            return l;
-        }
-        r
+        core::cmp::min(l, r)
     }
 
     fn output_sub(l: u64, r: u64) -> u64 {
@@ -102,7 +106,7 @@ impl UnCompiledNodes {
 }
 
 pub struct UnCompiledNode {
-    pub states: Vec<State>,
+    pub(crate) states: Vec<State>,
     pub is_final: bool,
     pub final_output: u64,
 }
@@ -124,8 +128,9 @@ impl UnCompiledNode {
         if self.states.len() == 0 {
             return final_out;
         }
+        //依次修改每个状态的输出
         for i in 0..self.states.len() - 1 {
-            let state = &mut self.states[i];
+            let state = self.states.get_mut(i).unwrap();
             state.out = Self::output_cat(prefix_len, state.out);
         }
         let state = self.last_mut_state();
@@ -133,7 +138,7 @@ impl UnCompiledNode {
         return final_out;
     }
 
-    pub fn last_compiled(&mut self, addr: u64) {
+    pub(crate) fn last_compiled(&mut self, addr: u64) {
         if let Some(a) = self.states.last_mut() {
             a.target = addr;
         }
@@ -193,19 +198,20 @@ impl UnCompiledNode {
     }
 }
 
-pub struct State {
+pub(crate) struct State {
+    pub flag: u8,
     pub _in: u8,
     pub out: u64,
     pub final_out: u64,
     pub target: u64,
     pub is_last: bool,
-    pub flag: u8,
+
     pub is_stop: bool,
     pub is_final: bool,
 }
 
 impl State {
-    pub fn new(_in: u8, out: u64) -> State {
+    pub(crate) fn new(_in: u8, out: u64) -> State {
         Self {
             _in: _in,
             out: out,
@@ -218,11 +224,11 @@ impl State {
         }
     }
 
-    pub fn flag(&self, f: u8) -> bool {
+    pub(crate) fn flag(&self, f: u8) -> bool {
         return (self.flag & f) != 0;
     }
 
-    pub fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self._in = 0;
         self.out = 0;
         self.final_out = 0;

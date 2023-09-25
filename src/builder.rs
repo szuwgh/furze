@@ -26,13 +26,22 @@ where
         }
     }
 
+    pub fn get(&self) -> &W {
+        //查找公共前缀
+        self.encoder.get_ref()
+    }
+
+    //插入一个节点
     pub fn add(&mut self, key: &[u8], val: u64) -> FstResult<()> {
+        //查找公共前缀
         let (prefix_len, out) = self.unfinished.find_common_prefix(key, val);
         self.freeze_tail(prefix_len)?;
         self.unfinished.add_suffix(&key[prefix_len..], out);
         Ok(())
     }
 
+    // 调用freezeTail方法, 从尾部一直到公共前缀的节点，将已经确定的状态节点冻结。
+    // 这里会将UncompiledNode序列化到bytes当中，并转换成CompiledNode
     fn freeze_tail(&mut self, prefix_len: usize) -> FstResult<()> {
         let mut addr: i64 = -1;
         while prefix_len + 1 < self.unfinished.stack.len() {
@@ -85,37 +94,20 @@ mod tests {
     fn test_add() {
         let mut b = Builder::new(Bytes::new());
         b.add("cat".as_bytes(), 5);
-        b.add("leep".as_bytes(), 10);
-        b.add("lo".as_bytes(), 15);
-        b.add("log".as_bytes(), 2);
-        b.add("logs".as_bytes(), 8);
-        b.add("lx".as_bytes(), 96);
-        b.add("lz".as_bytes(), 100);
+        b.add("dog".as_bytes(), 10);
+        b.add("deep".as_bytes(), 15);
+        b.add("logs".as_bytes(), 2);
         b.finish();
 
-        println!("{:?}", b.encoder.get_ref());
-
         let mut d = Decoder::new(b.encoder.get_ref());
-        let v = d.find("logs".as_bytes());
-        match v {
-            Ok(vv) => {
-                println!("v:{}", vv);
+        let res = d.find("logs".as_bytes());
+        match res {
+            Ok(v) => {
+                println!("out:{}", v);
             }
             Err(e) => {
                 println!("e:{:?}", e);
             }
-        }
-
-        d.reset();
-        let v = d.near("d88987742".as_bytes());
-        match v {
-            Ok(vv) => {
-                println!("vv:{}", vv);
-            }
-            Err(e) => {
-                println!("e:{:?}", e);
-            }
-            _ => {}
         }
 
         b.reset()

@@ -1,9 +1,3 @@
-# furze
-
-finite state transducers (fst) writen in rust, refer to the Lucene fst implementation. The FST stores all terms in bytes and reuses the prefix and suffix of term Index to make it small enough to fit into memory, reducing storage space, commonly used in search engines, speech recognition and natural language search.
-
-Example:
-```rust
 use furze::Builder;
 use furze::FST;
 fn main() {
@@ -25,9 +19,3 @@ fn main() {
         }
     }
 }
-
-```
-terminal:
-```
-out:2
-```

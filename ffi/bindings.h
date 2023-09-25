@@ -29,6 +29,6 @@ void reset(void *arg);
 
 void *load(uint8_t *key, uint32_t len, uint32_t cap);
 
-int64_t get(void *arg, const uint8_t *key, uint32_t len);
+int64_t find(void *arg, const uint8_t *key, uint32_t len);
 
 int64_t near(void *arg, const uint8_t *key, uint32_t len);

@@ -16,7 +16,7 @@ impl<'a> FST<'a> {
         Self { data: data }
     }
 
-    pub fn get(&self, key: &[u8]) -> FstResult<u64> {
+    pub fn find(&self, key: &[u8]) -> FstResult<u64> {
         let mut decoder = Decoder::new(&self.data);
         decoder.find(key)
     }
@@ -39,7 +39,7 @@ mod tests {
         builder.add("zz".as_bytes(), 9).unwrap();
         builder.finish().unwrap();
         let fst = FST::load(builder.bytes());
-        let res = fst.get("cc".as_bytes());
+        let res = fst.find("cc".as_bytes());
         match res {
             Ok(v) => println!("cc res:{}", v),
             Err(e) => println!("e:{}", e),
@@ -52,13 +52,13 @@ mod tests {
         builder.add("44".as_bytes(), 9).unwrap();
         builder.finish().unwrap();
         let fst = FST::load(builder.bytes());
-        let res = fst.get("cc".as_bytes());
+        let res = fst.find("cc".as_bytes());
         match res {
             Ok(v) => println!("cc res:{}", v),
             Err(e) => println!("e:{}", e),
         }
 
-        let res1 = fst.get("33".as_bytes());
+        let res1 = fst.find("33".as_bytes());
         match res1 {
             Ok(v) => println!("44 res:{}", v),
             Err(e) => println!("e:{}", e),
