@@ -3,16 +3,16 @@ use crate::bytes::Bytes;
 use crate::decoder::Decoder;
 use crate::error::FstResult;
 
-pub struct FST {
-    data: Vec<u8>,
+pub struct FST<'a> {
+    data: &'a [u8],
 }
 
-impl FST {
+impl<'a> FST<'a> {
     pub fn build() -> Builder<Vec<u8>> {
-        Builder::new(Bytes::new())
+        Builder::new(Bytes::new()) 
     }
 
-    pub fn load(data: Vec<u8>) -> FST {
+    pub fn load(data: &'a[u8]) -> FST<'a> {
         Self { data: data }
     }
 
@@ -38,7 +38,7 @@ mod tests {
         builder.add("cc".as_bytes(), 7).unwrap();
         builder.add("zz".as_bytes(), 9).unwrap();
         builder.finish().unwrap();
-        let fst = FST::load(builder.bytes().to_vec());
+        let fst = FST::load(builder.bytes());
         let res = fst.get("cc".as_bytes());
         match res {
             Ok(v) => println!("cc res:{}", v),
@@ -51,7 +51,7 @@ mod tests {
         builder.add("33".as_bytes(), 7).unwrap();
         builder.add("44".as_bytes(), 9).unwrap();
         builder.finish().unwrap();
-        let fst = FST::load(builder.bytes().to_vec());
+        let fst = FST::load(builder.bytes());
         let res = fst.get("cc".as_bytes());
         match res {
             Ok(v) => println!("cc res:{}", v),
@@ -60,7 +60,7 @@ mod tests {
 
         let res1 = fst.get("33".as_bytes());
         match res1 {
-            Ok(v) => println!("33 res:{}", v),
+            Ok(v) => println!("44 res:{}", v),
             Err(e) => println!("e:{}", e),
         }
     }
