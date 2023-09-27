@@ -27,7 +27,6 @@ where
     }
 
     pub fn get(&self) -> &W {
-        //查找公共前缀
         self.encoder.get_ref()
     }
 

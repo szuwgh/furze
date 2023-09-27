@@ -1,14 +1,11 @@
 [package]
-name = "ffi"
+name = "tests"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-crate-type = ["staticlib", "dylib"]
-
-[build-dependencies]
-cbindgen = "0.20.0"
-
 [dependencies]
+furze = { path = "../", version = "0.0.2" }
+rand = "0.8.5"
+fst = "0.4.7"

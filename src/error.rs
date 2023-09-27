@@ -1,9 +1,14 @@
 use std::io;
 use thiserror::Error;
+use std::io::Error as IOError;
 pub type FstResult<T> = Result<T, FstError>;
 
 #[derive(Error, Debug)]
 pub enum FstError {
+    #[error("Unexpected: {0}, {1}")]
+    UnexpectIO(String, io::Error),
+    #[error("Unexpected: {0}")]
+    Unexpected(String),
     #[error("reader fst EOF")]
     Eof,
     #[error("Fail")]
@@ -16,6 +21,30 @@ pub enum FstError {
     EncodeFail(String),
     #[error("io write fail from :{0}")]
     IoWriteFail(io::Error),
+}
+
+impl From<&str> for FstError {
+    fn from(e: &str) -> Self {
+        FstError::Unexpected(e.to_string())
+    }
+}
+
+impl From<(&str, io::Error)> for FstError {
+    fn from(e: (&str, io::Error)) -> Self {
+        FstError::UnexpectIO(e.0.to_string(), e.1)
+    }
+}
+
+impl From<String> for FstError {
+    fn from(e: String) -> Self {
+        FstError::Unexpected(e)
+    }
+}
+
+impl From<IOError> for FstError {
+    fn from(e: IOError) -> Self {
+        FstError::Unexpected(e.to_string())
+    }
 }
 
 #[cfg(test)]

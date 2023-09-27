@@ -1,12 +1,13 @@
-pub const BIT_FINAL_STATE: u8 = 1 << 0;
-pub const BIT_LAST_STATE: u8 = 1 << 1;
-pub const BIT_TAGET_NEXT: u8 = 1 << 2;
-pub const BIT_STOP_NODE: u8 = 1 << 3;
-pub const BIT_STATE_HAS_OUPPUT: u8 = 1 << 4;
-pub const BIT_STATE_HAS_FINAL_OUTPUT: u8 = 1 << 5;
-pub const BIT_TARGET_DELTA: u8 = 1 << 6;
+pub(crate) const BIT_FINAL_STATE: u8 = 1 << 0;
+pub(crate) const BIT_LAST_STATE: u8 = 1 << 1;
+pub(crate) const BIT_TAGET_NEXT: u8 = 1 << 2;
+pub(crate) const BIT_STOP_NODE: u8 = 1 << 3;
+pub(crate) const BIT_STATE_HAS_OUPPUT: u8 = 1 << 4;
+pub(crate) const BIT_STATE_HAS_FINAL_OUTPUT: u8 = 1 << 5;
+pub(crate) const ARCS_AS_FIXED_ARRAY: u8 = 1 << 6;
+//pub(crate) const ARCS_AS_FIXED_ARRAY: u8 = BIT_STATE_HAS_FINAL_OUTPUT;
 pub(crate) struct UnCompiledNodes {
-    pub stack: Vec<UnCompiledNode>,
+    pub(crate) stack: Vec<UnCompiledNode>,
 }
 
 impl UnCompiledNodes {
@@ -107,8 +108,8 @@ impl UnCompiledNodes {
 
 pub struct UnCompiledNode {
     pub(crate) states: Vec<State>,
-    pub is_final: bool,
-    pub final_output: u64,
+    pub(crate) is_final: bool,
+    pub(crate) final_output: u64,
 }
 
 impl UnCompiledNode {
