@@ -53,6 +53,10 @@ impl<'a> ReverseReader<'a> {
         self.i = postion
     }
 
+    fn skip_bytes(&mut self, skip: i32) {
+        self.i = self.i - skip;
+    }
+
     fn get_bytes(&self, start: usize, end: usize) -> &'a [u8] {
         &self.data[start..end]
     }
@@ -107,7 +111,7 @@ impl<'a> Decoder<'a> {
         let mut out: u64 = 0;
         let mut greater: bool = false;
         loop {
-            let frist_res = self.near_target_state(frist_k, state);
+            let frist_res = self.loop_state(frist_k, state);
             let position = self.reader.get_position();
             match frist_res {
                 Err(e) => match e {
@@ -152,23 +156,43 @@ impl<'a> Decoder<'a> {
         Ok(out)
     }
 
-    fn near_target_state(&mut self, _in: u8, state: &mut State) -> FstResult<()> {
-        self.read_first_state(state)?;
-        loop {
-            if state._in == _in {
-                return Ok(());
-            } else if state._in > _in {
-                return Err(FstError::Greater);
-            } else if state.is_last {
-                return Err(FstError::NotFound);
-            } else {
-                self.read_next_state(state)?;
-            }
-        }
+    pub(crate) fn near(&mut self, key: &[u8]) -> FstResult<u64> {
+        let mut state = State::new(0, 0);
+        state.target = self.reader.get_position() as u64;
+        self.near_next(key, &mut state)
     }
 
-    pub(crate) fn find(&mut self, key: &[u8]) -> FstResult<u64> {
+    pub(crate) fn get_prefix(&mut self, key: &[u8]) -> FstResult<u64> {
         let mut state = State::new(0, 0);
+        state.target = self.reader.get_position() as u64;
+        let mut out: u64 = 0;
+        let mut f = false;
+        let mut last_k: u8 = 0;
+        for _k in key.iter() {
+            if let Ok(()) = self.find_target_state(*_k, &mut state) {
+                out += state.out;
+                f = true;
+            } else {
+                f = false;
+                last_k = *_k;
+                break;
+            }
+        }
+        if !state.is_final {
+            return Err(FstError::NotFound);
+        }
+        if !f && state.is_last {
+            return Err(FstError::NotFound);
+        }
+        //已经遍历所有相同前缀 然后变量下一个词的时候，已经顺序遍历完最后一个字符，并且没有找到匹配
+
+        out += state.final_out;
+        Ok(out)
+    }
+
+    pub(crate) fn get(&mut self, key: &[u8]) -> FstResult<u64> {
+        let mut state = State::new(0, 0);
+        state.target = self.reader.get_position() as u64;
         let mut out: u64 = 0;
         for _k in key.iter() {
             self.find_target_state(*_k, &mut state)?;
@@ -181,12 +205,15 @@ impl<'a> Decoder<'a> {
         Ok(out)
     }
 
-    pub(crate) fn near(&mut self, key: &[u8]) -> FstResult<u64> {
-        let mut state = State::new(0, 0);
-        self.near_next(key, &mut state)
-    }
+    // pub(crate) fn near(&mut self, key: &[u8]) -> FstResult<u64> {
+    //     let mut state = State::new(0, 0);
+    //     self.near_next(key, &mut state)
+    // }
 
     fn find_target_state(&mut self, _in: u8, state: &mut State) -> FstResult<()> {
+        if state.target <= 0 {
+            return Err(FstError::NotFound);
+        }
         self.read_first_state(state)?;
         if state.flag(ARCS_AS_FIXED_ARRAY) {
             // do binary search
@@ -212,9 +239,35 @@ impl<'a> Decoder<'a> {
             }
             return Err(FstError::NotFound);
         }
+
         loop {
             if state._in == _in {
                 return Ok(());
+            } else if state._in > _in {
+                return Err(FstError::Greater);
+            } else if state.is_last {
+                return Err(FstError::NotFound);
+            } else {
+                self.read_next_state(state)?;
+            }
+        }
+    }
+
+    fn loop_state(&mut self, _in: u8, state: &mut State) -> FstResult<()> {
+        if state.target <= 0 {
+            return Err(FstError::NotFound);
+        }
+        self.read_first_state(state)?;
+        if state.flag(ARCS_AS_FIXED_ARRAY) {
+            let num_states = state.final_out as i32;
+            self.reader.skip_bytes(num_states * 5);
+            self.read_next_state(state)?;
+        }
+        loop {
+            if state._in == _in {
+                return Ok(());
+            } else if state._in > _in {
+                return Err(FstError::Greater);
             } else if state.is_last {
                 return Err(FstError::NotFound);
             } else {

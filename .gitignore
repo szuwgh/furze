@@ -13,11 +13,9 @@ Cargo.lock
 
 /target
 
-<<<<<<< HEAD
-/ffi/target
-=======
+ffi/target
+tests/target
 example/simple/target
->>>>>>> 3d7c13be63c8cefea6b83c4a6cc74e5d4ea544f7
 
 .vscode/
 

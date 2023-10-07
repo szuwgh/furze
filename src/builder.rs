@@ -99,7 +99,7 @@ mod tests {
         b.finish();
 
         let mut d = Decoder::new(b.encoder.get_ref());
-        let res = d.find("logs".as_bytes());
+        let res = d.get("logs".as_bytes());
         match res {
             Ok(v) => {
                 println!("out:{}", v);

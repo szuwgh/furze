@@ -44,7 +44,7 @@ mod tests {
         let t1 = timestamp1();
         let fst: FST<'_> = FST::load(builder.bytes());
         for (x1, x2) in rand_bytes.iter() {
-            let res = fst.find(x1).unwrap();
+            let res = fst.get(x1).unwrap();
             //println!("x2:{},res:{}", x2, res);
             assert!(res == *x2);
         }
@@ -78,6 +78,7 @@ mod tests {
         let fst = bfst.into_fst();
         for (x1, x2) in rand_bytes.iter() {
             let res = fst.get(x1).unwrap();
+            //  fst.search(aut)
             //println!("x2:{},res:{}", x2, res);
             assert!(res.value() == *x2);
         }
