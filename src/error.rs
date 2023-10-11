@@ -1,6 +1,6 @@
 use std::io;
-use thiserror::Error;
 use std::io::Error as IOError;
+use thiserror::Error;
 pub type FstResult<T> = Result<T, FstError>;
 
 #[derive(Error, Debug)]

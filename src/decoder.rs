@@ -33,27 +33,27 @@ fn copy_slice<T: Copy>(des: &mut [T], src: &[T]) -> usize {
 }
 
 struct ReverseReader<'a> {
-    i: i32,
+    i: usize,
     data: &'a [u8],
 }
 
 impl<'a> ReverseReader<'a> {
     fn new(data: &'a [u8]) -> ReverseReader {
         Self {
-            i: (data.len() - 1) as i32,
+            i: (data.len() - 1),
             data: data,
         }
     }
 
     fn reset(&mut self) {
-        self.i = (self.data.len() - 1) as i32;
+        self.i = self.data.len() - 1;
     }
 
-    fn set_position(&mut self, postion: i32) {
+    fn set_position(&mut self, postion: usize) {
         self.i = postion
     }
 
-    fn skip_bytes(&mut self, skip: i32) {
+    fn skip_bytes(&mut self, skip: usize) {
         self.i = self.i - skip;
     }
 
@@ -62,23 +62,23 @@ impl<'a> ReverseReader<'a> {
     }
 
     fn read_byte(&mut self) -> Result<u8> {
-        if self.i < 0 {
+        if self.i == 0 {
             return Err(IOError::from(std::io::ErrorKind::UnexpectedEof));
         }
-        let b = self.data[self.i as usize];
+        let b = self.data[self.i];
         self.i -= 1;
         Ok(b)
     }
 
-    fn get_position(&self) -> i32 {
-        self.i as i32
+    fn get_position(&self) -> usize {
+        self.i
     }
 }
 
 use std::io::Read;
 impl<'a> Read for ReverseReader<'a> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        if self.i < 0 {
+        if self.i == 0 {
             return Err(IOError::from(std::io::ErrorKind::UnexpectedEof));
         }
         for x in buf.iter_mut() {
@@ -223,7 +223,7 @@ impl<'a> Decoder<'a> {
             let start = self.reader.get_position();
             while low <= high {
                 let mid = (low + high) >> 1; // (low + high)/2
-                self.reader.set_position(start - (mid * 5) as i32);
+                self.reader.set_position(start - (mid * 5) as usize);
                 let mid_label = self.reader.read_u8()? as i32;
                 let cmp = mid_label - _in as i32;
                 if cmp < 0 {
@@ -231,7 +231,7 @@ impl<'a> Decoder<'a> {
                 } else if cmp > 0 {
                     high = mid - 1;
                 } else {
-                    let position = self.reader.read_u32::<BigEndian>()? as i32;
+                    let position = self.reader.read_u32::<BigEndian>()? as usize;
                     self.reader.set_position(position);
                     self.read_next_state(state)?;
                     return Ok(());
@@ -259,7 +259,7 @@ impl<'a> Decoder<'a> {
         }
         self.read_first_state(state)?;
         if state.flag(ARCS_AS_FIXED_ARRAY) {
-            let num_states = state.final_out as i32;
+            let num_states = state.final_out as usize;
             self.reader.skip_bytes(num_states * 5);
             self.read_next_state(state)?;
         }
@@ -278,7 +278,7 @@ impl<'a> Decoder<'a> {
 
     fn read_first_state(&mut self, state: &mut State) -> FstResult<()> {
         if state.target > 0 {
-            self.reader.set_position(state.target as i32);
+            self.reader.set_position(state.target as usize);
         }
         self.read_next_state(state)
     }

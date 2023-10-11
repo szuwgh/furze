@@ -3,6 +3,7 @@ use crate::encoder::Encoder;
 use crate::error::FstResult;
 use crate::state::UnCompiledNode;
 use crate::state::UnCompiledNodes;
+use byteorder::WriteBytesExt;
 use std::io::Write;
 
 pub struct Builder<W>
@@ -17,7 +18,8 @@ impl<W> Builder<W>
 where
     W: Write + Clear,
 {
-    pub fn new(w: W) -> Builder<W> {
+    pub fn new(mut w: W) -> Builder<W> {
+        w.write_u8(0).unwrap(); // end str
         let mut unfinished = UnCompiledNodes::new();
         unfinished.push_empty(false);
         Self {

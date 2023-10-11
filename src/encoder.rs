@@ -79,7 +79,7 @@ where
             self.writer.write_u8(flag)?;
 
             self.position += 2;
-            self.last_forzen_node = self.position - 1;
+            self.last_forzen_node = self.position;
             if fixed_able {
                 bytes_per_state.push((_s._in, (self.last_forzen_node) as u32));
             }
@@ -94,7 +94,7 @@ where
             self.writer.write_u8(0)?;
             self.writer.write_u8(ARCS_AS_FIXED_ARRAY)?;
             self.position += (bytes_per_state.len() * 5) as u64 + l + 2;
-            self.last_forzen_node = self.position - 1;
+            self.last_forzen_node = self.position;
         }
         Ok(self.last_forzen_node)
     }
