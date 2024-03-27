@@ -6,6 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-furze = { path = "../", version = "0.0.3" }
+furze = { path = "../", version = "0.0.4" }
 rand = "0.8.5"
 fst = "0.4.7"

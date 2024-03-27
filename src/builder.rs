@@ -79,10 +79,12 @@ where
         self.encoder.get_ref()
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) -> FstResult<()> {
         self.unfinished.reset();
-        self.unfinished.push_empty(false);
         self.encoder.reset();
+        self.encoder.write_u8(0)?; // en
+        self.unfinished.push_empty(false);
+        Ok(())
     }
 }
 
@@ -111,6 +113,6 @@ mod tests {
             }
         }
 
-        b.reset()
+        b.reset();
     }
 }

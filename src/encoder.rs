@@ -115,6 +115,11 @@ where
         Ok(i as u64)
     }
 
+    pub(crate) fn write_u8(&mut self, u: u8) -> FstResult<()> {
+        self.writer.write_u8(u)?;
+        Ok(())
+    }
+
     fn flush(&mut self) -> FstResult<()> {
         self.writer.flush().map_err(|e| FstError::IoWriteFail(e))
     }

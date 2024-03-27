@@ -3,16 +3,12 @@ use crate::bytes::Bytes;
 use crate::decoder::Decoder;
 use crate::error::FstResult;
 
-pub struct FST<'a> {
-    data: &'a [u8],
+pub struct FST<T: AsRef<[u8]>> {
+    data: T,
 }
 
-impl<'a> FST<'a> {
-    pub fn build() -> Builder<Vec<u8>> {
-        Builder::new(Bytes::with_capacity(4 * 1024))
-    }
-
-    pub fn load(data: &'a [u8]) -> FST<'a> {
+impl<T: AsRef<[u8]>> FST<T> {
+    pub fn load(data: T) -> FST<T> {
         Self { data: data }
     }
 
@@ -21,10 +17,10 @@ impl<'a> FST<'a> {
         decoder.get(key)
     }
 
-    fn get_prefix(&self, key: &[u8]) -> FstResult<u64> {
-        let mut decoder = Decoder::new(&self.data);
-        decoder.get_prefix(key)
-    }
+    // fn get_prefix(&self, key: &[u8]) -> FstResult<u64> {
+    //     let mut decoder = Decoder::new(&self.data);
+    //     decoder.get_prefix(key)
+    // }
 
     pub fn near(&self, key: &[u8]) -> FstResult<u64> {
         let mut decoder = Decoder::new(&self.data);
@@ -38,7 +34,7 @@ mod tests {
 
     #[test]
     fn test_add_to_fst2() {
-        let mut builder = FST::build();
+        let mut builder = Builder::new(Bytes::with_capacity(4 * 1024));
         builder.add("aa".as_bytes(), 0).unwrap();
         builder.add("bb".as_bytes(), 1).unwrap();
         builder.add("c1".as_bytes(), 1).unwrap();

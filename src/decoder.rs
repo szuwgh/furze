@@ -32,21 +32,21 @@ fn copy_slice<T: Copy>(des: &mut [T], src: &[T]) -> usize {
     l
 }
 
-struct ReverseReader<'a> {
+struct ReverseReader<T: AsRef<[u8]>> {
     i: usize,
-    data: &'a [u8],
+    data: T,
 }
 
-impl<'a> ReverseReader<'a> {
-    fn new(data: &'a [u8]) -> ReverseReader {
+impl<T: AsRef<[u8]>> ReverseReader<T> {
+    fn new(data: T) -> ReverseReader<T> {
         Self {
-            i: (data.len() - 1),
+            i: (data.as_ref().len() - 1),
             data: data,
         }
     }
 
     fn reset(&mut self) {
-        self.i = self.data.len() - 1;
+        self.i = self.data.as_ref().len() - 1;
     }
 
     fn set_position(&mut self, postion: usize) {
@@ -57,15 +57,15 @@ impl<'a> ReverseReader<'a> {
         self.i = self.i - skip;
     }
 
-    fn get_bytes(&self, start: usize, end: usize) -> &'a [u8] {
-        &self.data[start..end]
+    fn get_bytes(&self, start: usize, end: usize) -> &[u8] {
+        &self.data.as_ref()[start..end]
     }
 
     fn read_byte(&mut self) -> Result<u8> {
         if self.i == 0 {
             return Err(IOError::from(std::io::ErrorKind::UnexpectedEof));
         }
-        let b = self.data[self.i];
+        let b = self.data.as_ref()[self.i];
         self.i -= 1;
         Ok(b)
     }
@@ -76,7 +76,8 @@ impl<'a> ReverseReader<'a> {
 }
 
 use std::io::Read;
-impl<'a> Read for ReverseReader<'a> {
+
+impl<T: AsRef<[u8]>> Read for ReverseReader<T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if self.i == 0 {
             return Err(IOError::from(std::io::ErrorKind::UnexpectedEof));
@@ -88,12 +89,12 @@ impl<'a> Read for ReverseReader<'a> {
     }
 }
 
-pub(crate) struct Decoder<'a> {
-    reader: ReverseReader<'a>,
+pub(crate) struct Decoder<T: AsRef<[u8]>> {
+    reader: ReverseReader<T>,
 }
 
-impl<'a> Decoder<'a> {
-    pub fn new(data: &'a [u8]) -> Decoder {
+impl<T: AsRef<[u8]>> Decoder<T> {
+    pub fn new(data: T) -> Decoder<T> {
         Self {
             reader: ReverseReader::new(data),
         }
@@ -167,14 +168,14 @@ impl<'a> Decoder<'a> {
         state.target = self.reader.get_position() as u64;
         let mut out: u64 = 0;
         let mut f = false;
-        let mut last_k: u8 = 0;
+        // let mut last_k: u8 = 0;
         for _k in key.iter() {
             if let Ok(()) = self.find_target_state(*_k, &mut state) {
                 out += state.out;
                 f = true;
             } else {
                 f = false;
-                last_k = *_k;
+                //  last_k = *_k;
                 break;
             }
         }
