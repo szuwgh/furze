@@ -1,6 +1,6 @@
 [package]
 name = "furze"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 authors = ["Walter Wu <895340293@qq.com>"]
 description = "finite state transducers (fst) writen in rust"
@@ -11,7 +11,8 @@ keywords = ["searchengine"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-
+[profile.dev]
+debug = true
 
 [dependencies]
 thiserror = "1.0"

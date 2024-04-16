@@ -199,30 +199,46 @@ impl UnCompiledNode {
     }
 }
 
+#[derive(Default, Clone)]
 pub(crate) struct State {
-    pub flag: u8,
-    pub _in: u8,
-    pub out: u64,
-    pub final_out: u64,
-    pub target: u64,
-    pub is_last: bool,
-
-    pub is_stop: bool,
-    pub is_final: bool,
+    pub(crate) flag: u8,
+    pub(crate) _in: u8,
+    pub(crate) out: u64,
+    pub(crate) final_out: u64,
+    pub(crate) target: u64,
+    //pub(crate) node: u64,
+    pub(crate) next_state: u64,
+    //  pub(crate) is_last: bool,
+    //  pub(crate) is_stop: bool,
+    pub(crate) is_final: bool,
 }
 
 impl State {
     pub(crate) fn new(_in: u8, out: u64) -> State {
         Self {
+            flag: 0,
             _in: _in,
             out: out,
             final_out: 0,
             target: 0,
-            is_last: false,
-            flag: 0,
-            is_stop: false,
+            //node: 0,
+            next_state: 0,
+            //       is_last: false,
+            //       is_stop: false,
             is_final: false,
         }
+    }
+
+    pub(crate) fn is_final(&self) -> bool {
+        self.flag(BIT_FINAL_STATE)
+    }
+
+    pub(crate) fn is_last(&self) -> bool {
+        self.flag(BIT_LAST_STATE)
+    }
+
+    pub(crate) fn is_stop(&self) -> bool {
+        self.flag(BIT_STOP_NODE)
     }
 
     pub(crate) fn flag(&self, f: u8) -> bool {
@@ -234,9 +250,10 @@ impl State {
         self.out = 0;
         self.final_out = 0;
         self.target = 0;
-        self.is_last = false;
+        //    self.is_last = false;
         self.flag = 0;
-        self.is_stop = false;
+        //    self.is_stop = false;
         self.is_final = false;
+        self.next_state = 0;
     }
 }

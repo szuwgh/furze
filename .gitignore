@@ -16,7 +16,7 @@ Cargo.lock
 ffi/target
 tests/target
 example/simple/target
-
+example/simple2/target
 .vscode/
 
 pkg/

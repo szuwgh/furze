@@ -59,7 +59,7 @@ where
                 flag |= BIT_FINAL_STATE;
             }
             if _s.target > 0 {
-                if self.last_forzen_node - 1 == _s.target && !fixed_able {
+                if self.last_forzen_node == _s.target && !fixed_able {
                     flag |= BIT_TAGET_NEXT;
                 } else {
                     self.position += self.write_vu64(_s.target)?;
@@ -85,7 +85,6 @@ where
             }
         }
         if fixed_able {
-            // write a "fake" first states:
             for (x1, x2) in bytes_per_state.iter() {
                 self.write_u32(*x2)?;
                 self.writer.write_u8(*x1)?;
