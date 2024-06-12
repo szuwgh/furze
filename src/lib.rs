@@ -6,6 +6,7 @@ pub mod error;
 mod fst;
 mod state;
 pub use builder::Builder;
+pub use fst::FstIterator;
 pub use fst::FST;
 
 mod tests {
