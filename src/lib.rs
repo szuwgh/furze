@@ -3,7 +3,7 @@ mod bytes;
 mod decoder;
 mod encoder;
 pub mod error;
-mod fst;
+pub mod fst;
 mod state;
 pub use builder::Builder;
 pub use fst::FstIterator;
