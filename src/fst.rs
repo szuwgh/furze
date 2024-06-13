@@ -1,3 +1,5 @@
+use std::slice::SliceIndex;
+
 use crate::builder::Builder;
 use crate::bytes::Bytes;
 use crate::decoder::Decoder;
@@ -28,7 +30,7 @@ impl<T: AsRef<[u8]>> FST<T> {
 }
 
 pub struct FstIterator<'a, T: AsRef<[u8]>> {
-    fst: &'a FST<T>,
+    //fst: &'a FST<T>,
     decoder: Decoder<&'a T>,
     states: Vec<State>,
     upto: usize,
@@ -40,7 +42,7 @@ impl<'a, T: AsRef<[u8]>> FstIterator<'a, T> {
     pub fn new(fst: &'a FST<T>) -> FstIterator<'a, T> {
         let decoder = Decoder::new(&fst.data);
         Self {
-            fst: fst,
+            //fst: fst,
             decoder: decoder,
             states: vec![State::new(0, 0); 10],
             upto: 0,
@@ -112,18 +114,62 @@ impl<'a, T: AsRef<[u8]>> FstIterator<'a, T> {
     }
 }
 
-impl<'a, T: AsRef<[u8]>> FstIterator<'a, T> {
-    pub fn next(&mut self) -> Option<(&[u8], u64)> {
+use core::ptr::NonNull;
+#[derive(Clone)]
+pub struct Cow {
+    ptr: NonNull<u8>,
+    len: usize,
+}
+
+impl Cow {
+    fn from_raw_parts(ptr: *mut u8, length: usize) -> Self {
+        unsafe {
+            Self {
+                ptr: NonNull::new_unchecked(ptr),
+                len: length,
+            }
+        }
+    }
+}
+
+impl AsRef<[u8]> for Cow {
+    fn as_ref(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.ptr.as_ptr() as *const u8, self.len) }
+    }
+}
+
+impl<'a, T: AsRef<[u8]>> Iterator for FstIterator<'a, T> {
+    type Item = (Cow, u64);
+    fn next(&mut self) -> Option<Self::Item> {
         if !self.do_next().is_ok() {
             return None;
         }
         if self.upto == 0 {
             return None;
         } else {
-            return Some((&self.input[1..self.upto], self.out[self.upto]));
+            return Some((
+                Cow::from_raw_parts(
+                    (&self.input[1..self.upto]).as_ptr() as *mut u8,
+                    self.upto - 1,
+                ),
+                self.out[self.upto],
+            ));
         }
     }
 }
+
+// impl<'a, T: AsRef<[u8]>> FstIterator<'a, T> {
+//     pub fn next(&mut self) -> Option<(&[u8], u64)> {
+//         if !self.do_next().is_ok() {
+//             return None;
+//         }
+//         if self.upto == 0 {
+//             return None;
+//         } else {
+//             return Some((&self.input[1..self.upto], self.out[self.upto]));
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

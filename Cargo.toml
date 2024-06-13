@@ -1,6 +1,6 @@
 [package]
 name = "furze"
-version = "0.0.7"
+version = "0.0.8"
 edition = "2021"
 authors = ["Walter Wu <895340293@qq.com>"]
 description = "finite state transducers (fst) writen in rust"

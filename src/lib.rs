@@ -37,7 +37,7 @@ mod tests {
         let mut f = fst.iter();
         let mut i = 0;
         while let Some((k, v)) = f.next() {
-            println!("k:{},v:{}", String::from_utf8_lossy(k), v);
+            println!("k:{:?},v:{}", k.as_ref(), v);
             i += 1;
             if i > 10 {
                 break;
