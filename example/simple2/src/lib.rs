@@ -95,13 +95,13 @@ mod tests {
             let fst = FST::load(builder.bytes());
             let mut fst_iter = fst.iter();
             let mut i = 0;
-            while let Some((k, v)) = fst_iter.next() {
-                println!("k:{},v:{}", String::from_utf8_lossy(k.as_ref()), v);
+            while let Some(v) = fst_iter.next() {
+                println!("k:{},v:{}", String::from_utf8_lossy(v.0.as_ref()), v.1);
                 assert!(
                     String::from_utf8_lossy(&rand_bytes[i].0)
-                        == String::from_utf8_lossy(k.as_ref())
+                        == String::from_utf8_lossy(v.0.as_ref())
                 );
-                assert!(rand_bytes[i].1 == v);
+                assert!(rand_bytes[i].1 == v.1);
                 i += 1;
                 // i += 1;
                 // if i > 10 {

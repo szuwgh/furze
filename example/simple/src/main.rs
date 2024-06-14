@@ -21,7 +21,7 @@ fn main() {
     }
 
     let mut f = fst.iter();
-    while let Some((k, v)) = f.next() {
-        println!("k:{},v:{}", String::from_utf8_lossy(k.as_ref()), v);
+    while let Some(v) = f.next() {
+        println!("k:{},v:{}", String::from_utf8_lossy(v.0.as_ref()), v.1);
     }
 }

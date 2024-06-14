@@ -36,8 +36,8 @@ mod tests {
 
         let mut f = fst.iter();
         let mut i = 0;
-        while let Some((k, v)) = f.next() {
-            println!("k:{:?},v:{}", k.as_ref(), v);
+        while let Some(v) = f.next() {
+            println!("k:{:?},v:{}", v.0.as_ref(), v.1);
             i += 1;
             if i > 10 {
                 break;

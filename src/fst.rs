@@ -42,7 +42,6 @@ impl<'a, T: AsRef<[u8]>> FstIterator<'a, T> {
     pub fn new(fst: &'a FST<T>) -> FstIterator<'a, T> {
         let decoder = Decoder::new(&fst.data);
         Self {
-            //fst: fst,
             decoder: decoder,
             states: vec![State::new(0, 0); 10],
             upto: 0,
@@ -114,6 +113,29 @@ impl<'a, T: AsRef<[u8]>> FstIterator<'a, T> {
     }
 }
 
+#[derive(Clone)]
+pub struct FstItem(pub Cow, pub u64);
+
+impl PartialOrd for FstItem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.as_ref().partial_cmp(other.0.as_ref())
+    }
+}
+
+impl PartialEq for FstItem {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_ref() == other.0.as_ref()
+    }
+}
+
+impl Eq for FstItem {}
+
+impl Ord for FstItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.as_ref().cmp(other.0.as_ref())
+    }
+}
+
 use core::ptr::NonNull;
 #[derive(Clone)]
 pub struct Cow {
@@ -139,7 +161,8 @@ impl AsRef<[u8]> for Cow {
 }
 
 impl<'a, T: AsRef<[u8]>> Iterator for FstIterator<'a, T> {
-    type Item = (Cow, u64);
+    type Item = FstItem;
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if !self.do_next().is_ok() {
             return None;
@@ -147,7 +170,7 @@ impl<'a, T: AsRef<[u8]>> Iterator for FstIterator<'a, T> {
         if self.upto == 0 {
             return None;
         } else {
-            return Some((
+            return Some(FstItem(
                 Cow::from_raw_parts(
                     (&self.input[1..self.upto]).as_ptr() as *mut u8,
                     self.upto - 1,
