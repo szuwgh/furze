@@ -1,7 +1,3 @@
-use std::slice::SliceIndex;
-
-use crate::builder::Builder;
-use crate::bytes::Bytes;
 use crate::decoder::Decoder;
 use crate::decoder::END_LABEL;
 use crate::error::FstResult;
@@ -197,7 +193,8 @@ impl<'a, T: AsRef<[u8]>> Iterator for FstIterator<'a, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use crate::builder::Builder;
+    use crate::bytes::Bytes;
     #[test]
     fn test_add_to_fst2() {
         let i = 0;
