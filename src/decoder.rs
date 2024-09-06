@@ -1,4 +1,4 @@
-use crate::encoder::Encoder;
+
 use crate::error::FstError;
 use crate::error::FstResult;
 use crate::state::State;
@@ -8,9 +8,7 @@ use crate::state::{
 };
 use byteorder::BigEndian;
 use byteorder::ReadBytesExt;
-use std::f64::consts::E;
 use std::io::{Error as IOError, Result};
-use std::os::linux::raw::stat;
 use varintrs::{Binary, ReadBytesVarExt};
 
 const DROP_MSB: u8 = 0b0111_1111;
